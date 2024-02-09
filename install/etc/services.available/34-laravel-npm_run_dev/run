@@ -1,0 +1,16 @@
+#!/command/with-contenv bash
+
+source /assets/functions/00-container
+prepare_service defaults 30-laravel
+PROCESS_NAME="laravel-npm_run_dev"
+
+check_container_initialized
+check_service_initialized init 30-laravel
+liftoff
+
+
+print_start "Starting npm run dev"
+cd "${NGINX_WEBROOT}"
+sudo -u "${NGINX_USER}" npm \
+                                run \
+                                        dev

@@ -1,0 +1,15 @@
+#!/command/with-contenv bash
+
+source /assets/functions/00-container
+prepare_service defaults 30-laravel
+PROCESS_NAME="laravel-npm_watcher"
+
+check_container_initialized
+check_service_initialized init 30-laravel
+liftoff
+
+
+print_start "Starting NPM Watcher"
+cd "${NGINX_WEBROOT}"
+sudo -u "${NGINX_USER}" npm \
+                            run watch

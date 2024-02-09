@@ -1,0 +1,17 @@
+#!/command/with-contenv bash
+
+source /assets/functions/00-container
+prepare_service defaults 30-laravel
+PROCESS_NAME="laravel-artisan_serve"
+
+check_container_initialized
+check_service_initialized init 30-laravel
+liftoff
+
+
+print_start "Starting Artisan Serve"
+cd "${NGINX_WEBROOT}"
+sudo -u "${NGINX_USER}" php \
+                            artisan \
+                                    serve \
+                                            --host 0.0.0.0

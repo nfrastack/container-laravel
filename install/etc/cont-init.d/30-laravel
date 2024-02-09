@@ -1,0 +1,90 @@
+#!/command/with-contenv bash
+
+source /assets/functions/00-container
+prepare_service
+PROCESS_NAME="laravel"
+
+### Logfile redirection
+mkdir -p /www/logs/laravel
+chown -R "${NGINX_USER}":"${NGINX_GROUP}" /www/logs/laravel
+rm -rf "${NGINX_WEBROOT}"/storage/logs
+mkdir -p "${NGINX_WEBROOT}"/storage/logs
+ln -sf /www/logs/laravel "${NGINX_WEBROOT}"/storage/logs
+create_logrotate laravel /www/logs/laravel/laravel.log
+
+if [ "${SETUP_TYPE,,}" = "auto" ]; then
+    print_notice "Generating Configuration"
+
+    ##if [ ! -f "${NGINX_WEBROOT}/.env" ] ; then
+    #print_debug "Copying Example .env to .env"
+    #cat /assets/install/.env.example > "${NGINX_WEBROOT}"/.env
+    #chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env
+    ##fi
+#
+    #configure_app_key
+    #configure_application
+    #configure_db
+    #configure_laravel
+    ##configure_ldap
+    #configure_logging
+    #configure_mail
+fi
+
+if var_false "${ENABLE_LARAVEL_WORKER}" ; then
+    service_stop 30-laravel-worker
+else
+    if [ ! -f "${NGINX_WEBROOT}/artisan" ] ; then
+        service_stop 30-laravel-worker
+    fi
+fi
+
+if var_false "${ENABLE_LARAVEL_ENV_WATCHER}" ; then
+    service_stop 31-laravel-env_watcher
+else
+    if [ ! -f "${NGINX_WEBROOT}/.env" ] ; then
+        service_stop 31-laravel-env_watcher
+    fi
+fi
+
+if var_false "${ENABLE_LARAVEL_NPM_WATCHER}" ; then
+    service_stop 32-laravel-npm_watcher
+else
+    if [ ! -f "${NGINX_WEBROOT}/package.json" ] ; then
+        service_stop 32-laravel-npm_watcher
+    fi
+fi
+
+if var_false "${ENABLE_LARAVEL_ARTISAN_SERVE}" ; then
+    service_stop 33-laravel-artisan_serve
+else
+    if [ ! -f "${NGINX_WEBROOT}/artisan" ] ; then
+        service_stop 33-laravel-artisan_serve
+    else
+        service_stop 10-nginx
+        service_stop 11-nginx-config-reload
+    fi
+fi
+if var_false "${ENABLE_LARAVEL_NPM_RUN_DEV}" ; then
+    service_stop 34-laravel-npm_run_dev
+else
+    if [ ! -f "${NGINX_WEBROOT}/package.json" ] ; then
+        service_stop 34-laravel-npm_run_dev
+    fi
+fi
+
+## Cleanup
+
+if [ -f "${NGINX_WEBROOT}"/artisan ] ; then
+    print_debug "Cleaning up Cache and Views"
+    cd "${NGINX_WEBROOT}"/
+    silent sudo -u "${NGINX_USER}" php artisan cache:clear
+    silent sudo -u "${NGINX_USER}" php artisan view:clear
+fi
+
+cd "${NGINX_WEBROOT}"
+chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"
+chmod ug+rwx "${NGINX_WEBROOT}"
+
+update_bashrc
+
+liftoff

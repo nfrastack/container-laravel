@@ -1,0 +1,97 @@
+#!/usr/bin/with-contenv bash
+
+update_env() {
+    print_debug "Updating .env '$1' with '$2' value"
+    if [[ $2 = *[[:space:]]* ]] ; then
+        sed -i --follow-symlinks "s|${1}=.*|$1=\"$2\"|g" "${NGINX_WEBROOT}"/.env
+    else
+        sed -i --follow-symlinks "s|${1}=.*|$1=$2|g" "${NGINX_WEBROOT}"/.env
+    fi
+}
+
+configure_db() {
+    print_debug "Updating DB Information"
+    ## MariaDB
+    update_env DB_DATABASE "${DB_NAME}"
+    update_env DB_HOST "${DB_HOST}"
+    update_env DB_PASSWORD "${DB_PASS}"
+    update_env DB_PORT "${DB_PORT}"
+    update_env DB_USERNAME "${DB_USER}"
+}
+
+configure_laravel() {
+    print_debug "Updating Laravel Information"
+    update_env APP_NAME "${APP_NAME}"
+    update_env APP_URL "${SITE_URL}"
+    update_env APP_ENV "${STAGE}"
+    update_env APP_DEBUG "${APP_DEBUG}"
+    update_env BROADCAST_DRIVER ${BROADCAST_DRIVER}
+    update_env CACHE_DRIVER ${CACHE_DRIVER}
+    update_env MEDIA_DISK "${MEDIA_DISK}"
+    mkdir -p "${NGINX_WEBROOT}"/public/"${MEDIA_DISK}"
+    mkdir -p "${NGINX_WEBROOT}"/public/uploads/
+    update_env SESSION_DRIVER ${SESSION_DRIVER}
+    update_env SESSION_LIFETIME ${SESSION_LIFETIME}
+}
+
+
+configure_mail() {
+    print_debug "Updating Mail"
+    update_env MAIL_ENCRYPTION "${SMTP_ENCRYPTION}"
+    update_env MAIL_FROM_ADDRESS "${MAIL_FROM_ADDRESS}"
+    update_env MAIL_FROM_NAME "${MAIL_FROM_NAME}"
+    update_env MAIL_HOST "${SMTP_HOST}"
+    update_env MAIL_PASSWORD ${SMTP_PASS}
+    update_env MAIL_PORT ${SMTP_PORT}
+    update_env MAIL_TYPE "${MAIL_TYPE}"
+    update_env MAIL_USERNAME ${SMTP_USER}
+}
+
+configure_ldap() {
+    print_debug "Updating LDAP"
+    sanity_var LDAP_HOST "LDAP Hostname"
+    sanity_var LDAP_BASE_DN "LDAP Base DN"
+    sanity_var LDAP_BIND_USER "LDAP Bind User"
+    sanity_var LDAP_BIND_PASS "LDAP Bind Password"
+
+    update_env LDAP_BASE_DN ${LDAP_BASE_DN}
+    update_env LDAP_CONNECTION ${LDAP_CONNECTION}
+    update_env LDAP_HOST ${LDAP_HOST}
+    update_env LDAP_LOGGING "${LOG_LDAP}"
+    update_env LDAP_PASSWORD "${LDAP_BIND_PASS}"
+    update_env LDAP_PORT ${LDAP_PORT}
+    update_env LDAP_SSL ${LDAP_SSL}
+    update_env LDAP_TIMEOUT ${LDAP_TIMEOUT}
+    update_env LDAP_TLS ${LDAP_TLS}
+    update_env LDAP_USERNAME "${LDAP_BIND_USER}"
+}
+
+
+configure_logging() {
+    print_debug "Updating Logging"
+    if [ "${CONTAINER_LOG_LEVEL,,}" = "debug" ] ; then
+        LOG_LEVEL=debug
+    fi
+    update_env LOG_CHANNEL "${LOG_CHANNEL}"
+    update_env LOG_LEVEL "${LOG_LEVEL}"
+}
+
+configure_app_key() {
+    cd "${NGINX_WEBROOT}"
+    chown "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env
+    silent sudo -u "${NGINX_USER}" php artisan key:generate --force
+}
+
+update_bashrc() {
+    if [ ! -f "/tmp/.container/container-restart" ] ; then
+        ### Add alias for running artisan
+        cat >> /root/.bashrc <<EOF
+function artisan() {
+    export oldpwd="\$(pwd)"
+    cd ${NGINX_WEBROOT}
+    sudo -u ${NGINX_USER} php artisan "\$@"
+    cd "\${oldpwd}"
+    }
+EOF
+    fi
+}
