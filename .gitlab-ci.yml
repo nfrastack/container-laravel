@@ -1,0 +1,7 @@
+## SelfDesign Gitlab CI/CD Settings - Docker Deployment
+## 2020-07-24 <daveconroy@selfdesign.org>
+
+include:
+  - project: 'templates/ci'
+    ref: master
+    file: '/docker/templates/build_docker_store_registry.yml'
