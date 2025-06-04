@@ -1,3 +1,9 @@
+## 0.0.5 2025-06-04 <dave at tiredofit dot ca>
+
+   ### Added
+      - Add default nginx configuration for production mode
+
+
 ## 0.0.4 2025-06-04 <dave at tiredofit dot ca>
 
    ### Changed

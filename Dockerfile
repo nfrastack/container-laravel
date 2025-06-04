@@ -5,6 +5,7 @@ FROM docker.io/tiredofit/nginx-php-fpm:${PHP_VERSION}-${DISTRO}
 LABEL maintainer="Dave Conroy (github.com/tiredofit)"
 
 ENV \
+    NGINX_SITE_ENABLED=laravel \
     PHP_ENABLE_CREATE_SAMPLE_PHP=FALSE \
     PHP_ENABLE_CURL=TRUE \
     PHP_ENABLE_INTL=TRUE \
