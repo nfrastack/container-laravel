@@ -1,3 +1,9 @@
+## 0.0.3 2025-06-04 <dave at tiredofit dot ca>
+
+   ### Added
+      - Add .gitignore check and insertion routines
+
+
 ## 0.0.2 2025-06-04 <dave at tiredofit dot ca>
 
    ### Added

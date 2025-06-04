@@ -1,0 +1,101 @@
+# Laravel specific
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+
+# IDE and editor files
+/.idea
+/.vscode
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Log files
+/storage/logs/*.log
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/app/public/*
+
+# Compiled assets
+/public/js
+/public/css
+/public/mix-manifest.json
+
+# Package managers
+composer.phar
+package-lock.json
+yarn.lock
+
+# Testing
+/coverage
+/.phpunit.cache
+/tests/coverage
+
+# Deployment
+/deploy.php
+/.deployer
+
+# Laravel Nova (if used)
+/nova
+
+# Laravel Telescope (if used)
+/telescope
+
+# User uploaded content
+/storage/app/uploads/*
+/storage/app/avatars/*
+/storage/app/documents/*
+/public/uploads
+/public/storage/uploads
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+
+# Cache and temporary files
+/bootstrap/cache/*.php
+/storage/framework/cache/data/*
+/storage/debugbar/*
+
+# Configuration files that might contain secrets
+/config/database.php.backup
+/config/mail.php.backup
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.csr
+
+# Docker
+docker-compose.override.yml
+/.docker
+.direnv

@@ -105,7 +105,13 @@ _laravel_setup_webroot() {
                                          npm \
                                             install
     fi
+
+    if [ ! -f "${NGINX_WEBROOT}"/.gitignore ] ; then
+        print_debug "Creating .gitignore file"
+        cat /assets/laravel/.gitignore | silent sudo -u "${NGINX_USER}" tee "${NGINX_WEBROOT}"/.gitignore
+    fi
 }
+
 _laravel_setup_container_mode() {
     modes=$(echo "${LARAVEL_IMAGE_MODE}" | tr "," "\n")
     for mode in $modes; do
