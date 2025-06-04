@@ -14,4 +14,7 @@ cd "${NGINX_WEBROOT}"
 sudo -u "${NGINX_USER}" php \
                             artisan \
                                     serve \
-                                            --host 0.0.0.0
+                                            --no-ansi \
+                                            --no-interaction \
+                                            --host ${ARTISAN_SERVE_LISTEN_IP} \
+                                            --port ${ARTISAN_SERVE_LISTEN_PORT} ${ARTISAN_SERVE_ARGS}

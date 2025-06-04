@@ -13,4 +13,4 @@ print_start "Starting npm run dev"
 cd "${NGINX_WEBROOT}"
 sudo -u "${NGINX_USER}" npm \
                                 run \
-                                        dev
+                                    dev

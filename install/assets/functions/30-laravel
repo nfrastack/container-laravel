@@ -1,6 +1,6 @@
 #!/usr/bin/with-contenv bash
 
-update_env() {
+_laravel_update_env() {
     print_debug "Updating .env '$1' with '$2' value"
     if [[ $2 = *[[:space:]]* ]] ; then
         sed -i --follow-symlinks "s|${1}=.*|$1=\"$2\"|g" "${NGINX_WEBROOT}"/.env
@@ -9,7 +9,7 @@ update_env() {
     fi
 }
 
-configure_db() {
+_laravel_configure_db() {
     print_debug "Updating DB Information"
     ## MariaDB
     update_env DB_DATABASE "${DB_NAME}"
@@ -19,7 +19,7 @@ configure_db() {
     update_env DB_USERNAME "${DB_USER}"
 }
 
-configure_laravel() {
+_laravel_configure_laravel() {
     print_debug "Updating Laravel Information"
     update_env APP_NAME "${APP_NAME}"
     update_env APP_URL "${SITE_URL}"
@@ -35,7 +35,7 @@ configure_laravel() {
 }
 
 
-configure_mail() {
+_laravel_configure_mail() {
     print_debug "Updating Mail"
     update_env MAIL_ENCRYPTION "${SMTP_ENCRYPTION}"
     update_env MAIL_FROM_ADDRESS "${MAIL_FROM_ADDRESS}"
@@ -47,7 +47,7 @@ configure_mail() {
     update_env MAIL_USERNAME ${SMTP_USER}
 }
 
-configure_ldap() {
+_laravel_configure_ldap() {
     print_debug "Updating LDAP"
     sanity_var LDAP_HOST "LDAP Hostname"
     sanity_var LDAP_BASE_DN "LDAP Base DN"
@@ -67,7 +67,7 @@ configure_ldap() {
 }
 
 
-configure_logging() {
+_laravel_configure_logging() {
     print_debug "Updating Logging"
     if [ "${CONTAINER_LOG_LEVEL,,}" = "debug" ] ; then
         LOG_LEVEL=debug
@@ -76,13 +76,61 @@ configure_logging() {
     update_env LOG_LEVEL "${LOG_LEVEL}"
 }
 
-configure_app_key() {
+_laravel_configure_app_key() {
     cd "${NGINX_WEBROOT}"
     chown "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env
     silent sudo -u "${NGINX_USER}" php artisan key:generate --force
 }
 
-update_bashrc() {
+_laravel_setup_webroot() {
+    if [ ! -f "${NGINX_WEBROOT}/artisan" ]; then
+        print_warn "Potential New Installation / Standalone Laravel Application detected"
+        chown -R "${NGINX_USER}":"${NGINX_GROUP}" \
+                                                    "${NGINX_WEBROOT}" \
+                                                    /var/cache/nginx
+        print_info "Installing Base Laravel Application"
+        cd "${NGINX_WEBROOT}"
+
+        silent sudo -u "${NGINX_USER}" \
+                                composer create \
+                                    laravel/laravel \
+                                        "${NGINX_WEBROOT}" \
+                                            --no-interaction \
+                                            --no-progress \
+                                            --no-scripts \
+                                            --prefer-dist
+
+        print_info "Installing Node dependencies"
+        silent sudo -u "${NGINX_USER}" \
+                                         npm \
+                                            install
+    fi
+}
+_laravel_setup_container_mode() {
+    modes=$(echo "${LARAVEL_IMAGE_MODE}" | tr "," "\n")
+    for mode in $modes; do
+        case "${mode,,}" in
+            prod* )
+                print_info "Laravel Image: Production Mode"
+                ENABLE_LARAVEL_ARTISAN_SERVE=FALSE
+                ENABLE_LARAVEL_ENV_WATCHER=TRUE
+                ENABLE_LARAVEL_NPM_RUN_DEV=FALSE
+                ENABLE_LARAVEL_WORKER=TRUE
+            ;;
+            develop* | * )
+                print_info "Laravel Image: Development Mode"
+                ENABLE_LARAVEL_ARTISAN_SERVE=TRUE
+                ENABLE_LARAVEL_ENV_WATCHER=TRUE
+                ENABLE_LARAVEL_NPM_RUN_DEV=TRUE
+                print_info "Consider ENABLE_LARAVEL_WORKER=TRUE for queue processing"
+                ENABLE_LARAVEL_WORKER=FALSE
+
+            ;;
+        esac
+    done
+}
+
+_laravel_update_bashrc() {
     if [ ! -f "/tmp/.container/container-restart" ] ; then
         ### Add alias for running artisan
         cat >> /root/.bashrc <<EOF

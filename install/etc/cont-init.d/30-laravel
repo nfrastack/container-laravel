@@ -4,6 +4,8 @@ source /assets/functions/00-container
 prepare_service
 PROCESS_NAME="laravel"
 
+_laravel_setup_webroot
+
 ### Logfile redirection
 mkdir -p /www/logs/laravel
 chown -R "${NGINX_USER}":"${NGINX_GROUP}" /www/logs/laravel
@@ -11,6 +13,8 @@ rm -rf "${NGINX_WEBROOT}"/storage/logs
 mkdir -p "${NGINX_WEBROOT}"/storage/logs
 ln -sf /www/logs/laravel "${NGINX_WEBROOT}"/storage/logs
 create_logrotate laravel /www/logs/laravel/laravel.log
+
+_laravel_setup_container_mode
 
 if [ "${SETUP_TYPE,,}" = "auto" ]; then
     print_notice "Generating Configuration"
@@ -21,13 +25,13 @@ if [ "${SETUP_TYPE,,}" = "auto" ]; then
     #chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env
     ##fi
 #
-    #configure_app_key
-    #configure_application
-    #configure_db
-    #configure_laravel
-    ##configure_ldap
-    #configure_logging
-    #configure_mail
+    #_laravel_configure_app_key
+    #_laravel_configure_application
+    #_laravel_configure_db
+    #_laravel_configure_laravel
+    #_laravel_configure_ldap
+    #_laravel_configure_logging
+    #_laravel_configure_mail
 fi
 
 if var_false "${ENABLE_LARAVEL_WORKER}" ; then
@@ -73,7 +77,6 @@ else
 fi
 
 ## Cleanup
-
 if [ -f "${NGINX_WEBROOT}"/artisan ] ; then
     print_debug "Cleaning up Cache and Views"
     cd "${NGINX_WEBROOT}"/
@@ -85,6 +88,6 @@ cd "${NGINX_WEBROOT}"
 chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"
 chmod ug+rwx "${NGINX_WEBROOT}"
 
-update_bashrc
+_laravel_update_bashrc
 
 liftoff
