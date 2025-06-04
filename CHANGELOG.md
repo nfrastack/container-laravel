@@ -1,3 +1,9 @@
+## 0.0.4 2025-06-04 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Fix 0.0.3
+
+
 ## 0.0.3 2025-06-04 <dave at tiredofit dot ca>
 
    ### Added

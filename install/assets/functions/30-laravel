@@ -108,7 +108,7 @@ _laravel_setup_webroot() {
 
     if [ ! -f "${NGINX_WEBROOT}"/.gitignore ] ; then
         print_debug "Creating .gitignore file"
-        cat /assets/laravel/.gitignore | silent sudo -u "${NGINX_USER}" tee "${NGINX_WEBROOT}"/.gitignore
+        cat /assets/laravel/gitignore | silent sudo -u "${NGINX_USER}" tee "${NGINX_WEBROOT}"/.gitignore
     fi
 }
 
