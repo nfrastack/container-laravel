@@ -23,11 +23,13 @@ RUN source /assets/functions/00-container && \
     set -x && \
     package update && \
     package upgrade && \
-    package install .laravel-build-deps \
+    package install .laravel-run-deps \
+                                        jpegoptim
                                         nodejs \
                                         npm \
+                                        optipng \
+                                        pngquant \
                                         yarn \
-                                        && \
     php-ext prepare && \
     php-ext reset && \
     php-ext enable core && \

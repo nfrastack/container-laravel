@@ -1,3 +1,9 @@
+## 0.0.7 2025-06-04 <dave at tiredofit dot ca>
+
+   ### Added
+      - Add image optimization cli tools
+
+
 ## 0.0.6 2025-06-04 <dave at tiredofit dot ca>
 
    ### Changed
