@@ -169,24 +169,24 @@ Be sure to view the following repositories to understand all the customizable op
 | `LOG_LDAP`        | Enable LDAP Logging          | `FALSE`   |         |
 
 ### Operation Mode
-| Parameter            | Description                                                            | Default       | `_FILE` |
-| -------------------- | ---------------------------------------------------------------------- | ------------- | ------- |
-| `SETUP_TYPE`         | Automatically edit configuration after first bootup `AUTO` or `MANUAL` | `AUTO`        |         |
-| `DATA_PATH`                    | Base Data Path                                             | `/data`          |         |
-| `ENABLE_CONFIG_REDIRECTION`    | Enable Config File Redirection to Persistent Storage       | `FALSE`          |         |
-| `CONFIG_PATH`                  | Path to Configuration Directory                            | `${DATA_PATH}/config/`  |         |
-| `CONFIG_FILE`                  | Configuration File Name                                    | `config`         |         |
-| `ENABLE_LOG_REDIRECTION`       | Enable Log File Redirection to Persistent Storage          | `FALSE`          |         |
-| `LOG_PATH` | Logfile location | `/www/html/laravel` | |
-| `ENABLE_STORAGE_REDIRECTION`   | Enable Storage Directory Redirection to Persistent Storage | `FALSE`          |         |
-| `STORAGE_PATH`                 | Path to Storage Directory                                  | `${DATA_PATH}/storage/` |         |
-| `LARAVEL_IMAGE_MODE` | **Laravel Image Mode** - `production` or `development`. See [Image Mode Details](#image-mode-details) below | `development` |         |
-| `ENABLE_LARAVEL_ARTISAN_SERVE` | Enable Laravel Artisan Serve (Development only - not suitable for production) | `TRUE`           |         |
-| `ENABLE_LARAVEL_ENV_WATCHER`   | Enable Laravel Environment File Watcher                    | `TRUE`           |         |
-| `ENABLE_LARAVEL_NPM_RUN_DEV`   | Enable Laravel NPM Development Server                      | `TRUE`           |         |
-| `ENABLE_LARAVEL_WORKER`        | Enable Laravel Queue Worker                                | `FALSE`          |         |
-| `ARTISAN_SERVE_LISTEN_IP`      | IP Address for Artisan Serve to Listen On                  | `0.0.0.0`        |         |
-| `ARTISAN_SERVE_LISTEN_PORT`    | Port for Artisan Serve to Listen On                        | `8000`           |         |
+| Parameter                      | Description                                                                                                 | Default                 | `_FILE` |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------- | ----------------------- | ------- |
+| `SETUP_TYPE`                   | Automatically edit configuration after first bootup `AUTO` or `MANUAL`                                      | `AUTO`                  |         |
+| `DATA_PATH`                    | Base Data Path                                                                                              | `/data`                 |         |
+| `ENABLE_CONFIG_REDIRECTION`    | Enable Config File Redirection to Persistent Storage                                                        | `FALSE`                 |         |
+| `CONFIG_PATH`                  | Path to Configuration Directory                                                                             | `${DATA_PATH}/config/`  |         |
+| `CONFIG_FILE`                  | Configuration File Name                                                                                     | `config`                |         |
+| `ENABLE_LOG_REDIRECTION`       | Enable Log File Redirection to Persistent Storage                                                           | `FALSE`                 |         |
+| `LOG_PATH`                     | Logfile location                                                                                            | `/www/html/laravel`     |         |
+| `ENABLE_STORAGE_REDIRECTION`   | Enable Storage Directory Redirection to Persistent Storage                                                  | `FALSE`                 |         |
+| `STORAGE_PATH`                 | Path to Storage Directory                                                                                   | `${DATA_PATH}/storage/` |         |
+| `LARAVEL_IMAGE_MODE`           | **Laravel Image Mode** - `production` or `development`. See [Image Mode Details](#image-mode-details) below | `development`           |         |
+| `ENABLE_LARAVEL_ARTISAN_SERVE` | Enable Laravel Artisan Serve (Development only - not suitable for production)                               | `TRUE`                  |         |
+| `ENABLE_LARAVEL_ENV_WATCHER`   | Enable Laravel Environment File Watcher                                                                     | `TRUE`                  |         |
+| `ENABLE_LARAVEL_NPM_RUN_DEV`   | Enable Laravel NPM Development Server                                                                       | `TRUE`                  |         |
+| `ENABLE_LARAVEL_WORKER`        | Enable Laravel Queue Worker                                                                                 | `FALSE`                 |         |
+| `ARTISAN_SERVE_LISTEN_IP`      | IP Address for Artisan Serve to Listen On                                                                   | `0.0.0.0`               |         |
+| `ARTISAN_SERVE_LISTEN_PORT`    | Port for Artisan Serve to Listen On                                                                         | `8000`                  |         |
 
 ## Image Mode Details
 

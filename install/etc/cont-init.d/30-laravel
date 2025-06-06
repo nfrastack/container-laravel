@@ -5,15 +5,24 @@ prepare_service
 PROCESS_NAME="laravel"
 
 _laravel_setup_webroot
-
-### Logfile redirection
-mkdir -p /www/logs/laravel
-chown -R "${NGINX_USER}":"${NGINX_GROUP}" /www/logs/laravel
-rm -rf "${NGINX_WEBROOT}"/storage/logs
-ln -sf /www/logs/laravel "${NGINX_WEBROOT}"/storage/logs
-create_logrotate laravel /www/logs/laravel/laravel.log
-
 _laravel_setup_container_mode
+
+if var_true "${ENABLE_LOG_REDIRECTION}" ; then
+    print_info "Setting up log redirection to '${LOG_PATH}'"
+    _laravel_volatile_setup log
+fi
+
+if var_true "${ENABLE_CONFIG_REDIRECTION}" ; then
+    print_info "Setting up config redirection to '${CONFIG_PATH}'"
+    _laravel_volatile_setup config
+fi
+
+if var_true "${ENABLE_STORAGE_REDIRECTION}" ; then
+    print_info "Setting up storage redirection to '${STORAGE_PATH}'"
+    _laravel_volatile_setup storage
+fi
+
+_laravel_volatile_setup logs
 
 if [ "${SETUP_TYPE,,}" = "auto" ]; then
     print_notice "Generating Configuration"
