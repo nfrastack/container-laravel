@@ -1,3 +1,9 @@
+## 0.0.9 2025-06-05 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Fix Dockerfile
+
+
 ## 0.0.8 2025-06-05 <dave at tiredofit dot ca>
 
    ### Changed

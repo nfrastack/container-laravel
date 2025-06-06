@@ -24,7 +24,7 @@ RUN source /assets/functions/00-container && \
     package update && \
     package upgrade && \
     package install .laravel-run-deps \
-                                        jpegoptim
+                                        jpegoptim \
                                         nodejs \
                                         npm \
                                         optipng \
