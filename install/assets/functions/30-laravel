@@ -66,7 +66,6 @@ _laravel_configure_ldap() {
     update_env LDAP_USERNAME "${LDAP_BIND_USER}"
 }
 
-
 _laravel_configure_logging() {
     print_debug "Updating Logging"
     if [ "${CONTAINER_LOG_LEVEL,,}" = "debug" ] ; then
@@ -112,6 +111,52 @@ _laravel_setup_webroot() {
     fi
 }
 
+_laravel_volatile_setup() {
+    case "${@,,}" in
+        config )
+            if [ ! -d "${CONFIG_PATH}" ]; then
+                print_info "Creating Config Directory"
+                mkdir -p "${CONFIG_PATH}"
+            fi
+
+            if [ -s "${NGINX_WEBROOT}"/.env ]; then
+                if [ ! -s "${CONFIG_PATH}"/"${CONFIG_FILE}" ]; then
+                    print_info "Copying .env to Config Directory"
+                    cp "${NGINX_WEBROOT}"/.env "${CONFIG_PATH}"/"${CONFIG_FILE}"
+                else
+                    print_warn "Config File already exists, skipping copy"
+                fi
+            fi
+            rm -rf "${NGINX_WEBROOT}"/.env
+            ln -sf "${CONFIG_PATH}"/"${CONFIG_FILE}" "${NGINX_WEBROOT}"/.env
+            chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${CONFIG_PATH}"
+        ;;
+        log )
+            if [ ! -d "${LOG_PATH}" ]; then
+                print_info "Creating Log Directory"
+                mkdir -p "${LOG_PATH}"
+            fi
+
+            chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${LOG_PATH}"
+            rm -rf "${NGINX_WEBROOT}"/storage/logs
+            ln -sf "${LOG_PATH}" "${NGINX_WEBROOT}"/storage/logs
+            create_logrotate laravel /www/logs/laravel/laravel.log
+        ;;
+        storage )
+            if [ ! -d "${STORAGE_PATH}" ]; then
+                print_info "Creating Storage Directory"
+                mkdir -p "${STORAGE_PATH}"
+                chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${STORAGE_PATH}"
+            fi
+
+            cp -aR "${NGINX_WEBROOT}"/storage/* "${STORAGE_PATH}"
+            rm -rf "${NGINX_WEBROOT}"/storage
+            ln -s "${STORAGE_PATH}" "${NGINX_WEBROOT}"/storage
+            chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${STORAGE_PATH}"
+        ;;
+    esac
+}
+
 _laravel_setup_container_mode() {
     modes=$(echo "${LARAVEL_IMAGE_MODE}" | tr "," "\n")
     for mode in $modes; do
@@ -122,6 +167,9 @@ _laravel_setup_container_mode() {
                 ENABLE_LARAVEL_ENV_WATCHER=TRUE
                 ENABLE_LARAVEL_NPM_RUN_DEV=FALSE
                 ENABLE_LARAVEL_WORKER=TRUE
+                ENABLE_CONFIG_REDIRECTION=TRUE
+                ENABLE_LOG_REDIRECTION=TRUE
+                ENABLE_STORAGE_REDIRECTION=TRUE
             ;;
             develop* | * )
                 print_info "Laravel Image: Development Mode"
@@ -130,6 +178,9 @@ _laravel_setup_container_mode() {
                 ENABLE_LARAVEL_NPM_RUN_DEV=TRUE
                 print_info "Consider ENABLE_LARAVEL_WORKER=TRUE for queue processing"
                 ENABLE_LARAVEL_WORKER=FALSE
+                ENABLE_CONFIG_REDIRECTION=FALSE
+                ENABLE_LOG_REDIRECTION=FALSE
+                ENABLE_STORAGE_REDIRECTION=FALSE
 
             ;;
         esac
