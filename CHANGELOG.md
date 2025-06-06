@@ -1,3 +1,9 @@
+## 0.0.8 2025-06-05 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Change the way laravel logs are symlinked
+
+
 ## 0.0.7 2025-06-04 <dave at tiredofit dot ca>
 
    ### Added

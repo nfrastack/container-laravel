@@ -10,7 +10,6 @@ _laravel_setup_webroot
 mkdir -p /www/logs/laravel
 chown -R "${NGINX_USER}":"${NGINX_GROUP}" /www/logs/laravel
 rm -rf "${NGINX_WEBROOT}"/storage/logs
-mkdir -p "${NGINX_WEBROOT}"/storage/logs
 ln -sf /www/logs/laravel "${NGINX_WEBROOT}"/storage/logs
 create_logrotate laravel /www/logs/laravel/laravel.log
 
