@@ -30,6 +30,7 @@ RUN source /assets/functions/00-container && \
                                         optipng \
                                         pngquant \
                                         yarn \
+                                        && \
     php-ext prepare && \
     php-ext reset && \
     php-ext enable core && \

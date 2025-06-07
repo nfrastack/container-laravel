@@ -1,3 +1,9 @@
+## 0.0.11 2025-06-07 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Fix build error
+
+
 ## 0.0.10 2025-06-06 <dave at tiredofit dot ca>
 
    ### Changed
