@@ -1,21 +1,18 @@
 services:
   laravel-app:
-    image: tiredofit/laravel:latest
+    image: docker.io/nfrastack/laravel:latest
     container_name: laravel-app
-    ports:
-      - 8000:8000
+    #ports:
+    #  - 8000:8000
     labels:
       - traefik.enable=true
-      - traefik.http.routers..rule=Host(`laravel.example.com`)
-      - traefik.http.services..loadbalancer.server.port=8000
+      - traefik.http.routers.laravel.rule=Host(`laravel.example.com`)
+      - traefik.http.services.laravel.loadbalancer.server.port=8000
     volumes:
       - ./data/:/www/html
       - ./logs/:/www/logs
     environment:
       - TIMEZONE=America/Vancouver
-
-      - CONTAINER_NAME=laravel-app
-      - CONTAINER_ENABLE_MONITORING=FALSE
 
       - CONTAINER_USER_NGINX=1000
 
@@ -30,7 +27,7 @@ services:
     restart: always
 
   laravel-db:
-    image: tiredofit/mariadb:11.4
+    image: docker.io/tiredofit/mariadb:11.4
     container_name: laravel-db
     volumes:
       - ./db/laravel/mariadb:/var/lib/mysql
@@ -51,7 +48,7 @@ services:
     restart: always
 
   laravel-db-backup:
-    image: tiredofit/db-backup:latest
+    image: docker.io/tiredofit/db-backup:latest
     container_name: laravel-db-backup
     volumes:
       - ./dbbackup:/backup

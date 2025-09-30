@@ -1,9 +1,12 @@
 #!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
 
-source /assets/functions/00-container
-prepare_service defaults 30-laravel
-PROCESS_NAME="laravel-env_watcher"
+source /container/base/functions/container/init
+SERVICE_NAME="laravel-env_watcher"
 
+prepare_service
 check_container_initialized
 check_service_initialized init 30-laravel
 liftoff

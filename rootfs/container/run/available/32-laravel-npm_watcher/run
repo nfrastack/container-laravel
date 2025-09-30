@@ -1,13 +1,15 @@
 #!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
 
-source /assets/functions/00-container
-prepare_service defaults 30-laravel
-PROCESS_NAME="laravel-npm_watcher"
+source /container/base/functions/container/init
+SERVICE_NAME="laravel-npm_watcher"
 
+prepare_service
 check_container_initialized
 check_service_initialized init 30-laravel
 liftoff
-
 
 print_start "Starting NPM Watcher"
 cd "${NGINX_WEBROOT}"

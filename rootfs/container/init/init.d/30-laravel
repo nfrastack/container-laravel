@@ -1,35 +1,11 @@
 #!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
 
-source /assets/functions/00-container
+source /container/base/functions/container/init
 prepare_service
-PROCESS_NAME="laravel"
-
-
-cat <<EOF
-
-*******************************************************************************************
-*                                                                                         *
-*                    END OF LIFE NOTICE SEPTEMBER 30, 2025                                *
-*                               tiredofit/laravel                                         *
-*                                                                                         *
-* This image is no longer maintained as of and will not receive updates.                  *
-*                                                                                         *
-* A successor image is available at:                                                      *
-*                                                                                         *
-* Repository | Documentation:                                                             *
-*   - https://github.com/nfrastack/container-laravel                                      *
-*                                                                                         *
-* Image Registries:                                                                       *
-*   - https://hub.docker.com/r/nfrastack/laravel                                          *
-*   - https://github.com/nfrastack/container-laravel/pkgs/container/container-laravel     *
-*                                                                                         *
-* Please visit https://nfrastack.com for more information.                                *
-*                                                                                         *
-*******************************************************************************************
-
-EOF
-
-sleep 15
+SERVICE_NAME="laravel"
 
 _laravel_setup_webroot
 _laravel_setup_container_mode

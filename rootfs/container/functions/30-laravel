@@ -1,4 +1,6 @@
-#!/usr/bin/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
 
 _laravel_update_env() {
     print_debug "Updating .env '$1' with '$2' value"
@@ -188,9 +190,9 @@ _laravel_setup_container_mode() {
 }
 
 _laravel_update_bashrc() {
-    if [ ! -f "/tmp/.container/container-restart" ] ; then
+    if check_container_restarted ; then
         ### Add alias for running artisan
-        cat >> /root/.bashrc <<EOF
+        cat <<EOF | tee -a /root/.bashrc
 function artisan() {
     export oldpwd="\$(pwd)"
     cd ${NGINX_WEBROOT}

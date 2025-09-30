@@ -1,7 +1,7 @@
-## 0.0.99 2025-09-30 <dave at tiredofit dot ca>
+## 1.0.0pre 2025-09-30 <dave at tiredofit dot ca>
 
-Add EOL notice and deprecate image
-
+   ### Changed
+      - Switch base image to nfrastack/nginx-php-fpm
 
 ## 0.0.11 2025-06-07 <dave at tiredofit dot ca>
 

@@ -1,12 +1,16 @@
-#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
 
+DATA_PATH=${DATA_PATH:-"/data"}
+#
 if [ "${STAGE,,}" = "develop" ] ; then
     APP_DEBUG=${APP_DEBUG:-"TRUE"}
 else
     APP_DEBUG=${APP_DEBUG:-"FALSE"}
 fi
 
-DATA_PATH=${DATA_PATH:-"/data"} # Keep this at top of file
+
 APP_NAME=${APP_NAME:-"Application"}
 ARTISAN_SERVE_LISTEN_IP=${ARTISAN_SERVE_LISTEN_IP:-"0.0.0.0"}
 ARTISAN_SERVE_LISTEN_PORT=${ARTISAN_SERVE_LISTEN_PORT:-"8000"}
@@ -27,7 +31,7 @@ LOG_CHANNEL=${LOG_CHANNEL:-"stack"}
 LOG_FILE=${LOG_FILE:-"laravel.log"}
 LOG_LDAP=${LOG_LDAP:-"TRUE"}
 LOG_LEVEL=${LOG_LEVEL="INFO"}
-LOG_PATH=${LOG_PATH:-"/www/logs/laravel/"}
+LOG_PATH=${LOG_PATH:-"/logs/laravel/"}
 MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-"noreply@example.com"}
 MAIL_FROM_NAME=${MAIL_FROM_NAME:-"Example"}
 MEDIA_DISK=${MEDIA_DISK:-"media"}
