@@ -1,6 +1,8 @@
-## 0.0.99 2025-09-30 <dave at tiredofit dot ca>
+## 1.0.0 2026-05-11 <code at nfrastack dot com>
 
-Add EOL notice and deprecate image
+   ### Added
+      - Switch to nfrastack/container-nginx-php-fpm
+      - See README for usage
 
 
 ## 0.0.11 2025-06-07 <dave at tiredofit dot ca>
