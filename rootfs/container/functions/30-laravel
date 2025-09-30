@@ -1,0 +1,850 @@
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
+
+_laravel_acquire_from_git() {
+    print_notice "Cloning Application from Git Repository"
+    local _git_url="${LARAVEL_GIT_REPO}"
+    transform_var file LARAVEL_GIT_TOKEN
+    if [ -n "${LARAVEL_GIT_TOKEN}" ]; then
+        _git_url=$(echo "${_git_url}" | sed "s|://|://${LARAVEL_GIT_TOKEN}@|")
+    fi
+
+    silent sudo -u "${NGINX_USER}" \
+                            git clone \
+                                --branch "${LARAVEL_GIT_BRANCH}" \
+                                --single-branch \
+                                --depth 1 \
+                                "${_git_url}" \
+                                "${NGINX_WEBROOT%/}"/tmp-clone
+    local _exit_code=$?
+    if [ "${_exit_code}" -ne 0 ]; then
+        print_error "Git clone failed (exit code ${_exit_code}) - retrying with output visible"
+        rm -rf "${NGINX_WEBROOT%/}"/tmp-clone
+        sudo -u "${NGINX_USER}" \
+                            git clone \
+                                --branch "${LARAVEL_GIT_BRANCH}" \
+                                --single-branch \
+                                --depth 1 \
+                                "${_git_url}" \
+                                "${NGINX_WEBROOT%/}"/tmp-clone
+        exit 1
+    fi
+
+    shopt -s dotglob
+    mv "${NGINX_WEBROOT%/}"/tmp-clone/* "${NGINX_WEBROOT%/}"/
+    shopt -u dotglob
+    rm -rf "${NGINX_WEBROOT%/}"/tmp-clone
+}
+
+_laravel_acquire_from_data_path() {
+    local _src="${LARAVEL_INSTALL_DATA_PATH%/}/install"
+    print_notice "Installing application from source at '${_src}'"
+    cp -aR "${_src}/." "${NGINX_WEBROOT%/}/"
+    chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"
+}
+
+laravel_artisan_setup_commands() {
+    # Commands are newline- or pipe (|)-separated artisan sub-commands (everything after ... artisan ... eg 'migrate --force'
+    # Variables
+    #   LARAVEL_ARTISAN_SETUP_COMMANDS       — unnumbered / simple catch-all, runs first
+    #   LARAVEL_ARTISAN_SETUP_COMMANDS01    — slot 01  (
+    #   LARAVEL_ARTISAN_SETUP_COMMANDS02    — slot 02
+    _slot="${1:-}"
+
+    if [ -n "${_slot}" ]; then
+        _laravel_artisan_cmd_slot "${_slot}"
+    else
+        _ran=0
+        if [ -n "${LARAVEL_ARTISAN_SETUP_COMMANDS}" ]; then
+            cd "${NGINX_WEBROOT}"
+            print_info "Running artisan setup commands"
+            _laravel_run_artisan_cmds "${LARAVEL_ARTISAN_SETUP_COMMANDS}"
+            _ran=$((_ran + 1))
+        fi
+        _count=$(printenv | grep -cE '^LARAVEL_ARTISAN_SETUP_COMMANDS_[0-9]' || true)
+        if [ "${_count:-0}" -gt 0 ]; then
+            floop "${_count}" _laravel_artisan_cmd_slot SDNAMMOC_PUTES_NASITRA_LEVARAL
+            _ran=$((_ran + 1))
+        fi
+        if [ "${_ran}" -eq 0 ] ; then print_debug "No artisan setup commands defined - skipping" ; fi
+    fi
+}
+
+_laravel_artisan_cmd_slot() {
+    local i="${1}"
+    i=$(printf "%02d" "$i")
+    local _var="LARAVEL_ARTISAN_SETUP_COMMANDS${i}"
+    local _cmds="${!_var}"
+    if [ -z "${_cmds}" ]; then
+        print_debug "[artisan_cmd] No commands defined in ${_var} — skipping"
+        return
+    fi
+    print_info "[artisan_cmd] Running artisan setup commands (slot ${i})"
+    _laravel_run_artisan_cmds "${_cmds}"
+}
+
+_laravel_run_artisan_cmds() {
+    printf '%s\n' "${1}" | tr '|' '\n' | while IFS= read -r _cmd; do
+        _cmd=$(printf '%s' "${_cmd}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        [ -z "${_cmd}" ] && continue
+        case "${_cmd}" in \#*) continue ;; esac
+        print_debug "Artisan: php "${NGINX_WEBROOT%/}"/artisan ${_cmd}"
+        if ! silent sudo -u "${NGINX_USER}" sh -c "php ${NGINX_WEBROOT}/artisan ${_cmd}"; then
+            print_error "Artisan command failed: '${_cmd}' — retrying with output visible"
+            sudo -u "${NGINX_USER}" sh -c "php ${NGINX_WEBROOT}/artisan ${_cmd}"
+            exit 1
+        fi
+    done
+}
+
+_laravel_post_source_setup() {
+    # Seed .env from .env.example only when LARAVEL_COPY_ENV_EXAMPLE=TRUE.
+    if var_true "${LARAVEL_COPY_ENV_EXAMPLE}" \
+            && [ ! -f "${NGINX_WEBROOT%/}"/.env ] \
+            && [ -f "${NGINX_WEBROOT%/}"/.env.example ]; then
+        print_debug "Copying .env.example to .env"
+        cp "${NGINX_WEBROOT%/}"/.env.example "${NGINX_WEBROOT%/}"/.env
+        chown "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT%/}"/.env
+    fi
+
+    if var_true "${LARAVEL_COMPOSER_SETUP}" ; then
+        cd "${NGINX_WEBROOT}"
+        laravel_strip_path_repos
+        print_info "Running Composer Install"
+        transform_var file LARAVEL_COMPOSER_AUTH
+        if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then
+            print_debug "Using provided Composer authentication"
+            silent sudo -u "${NGINX_USER}" \
+                                    COMPOSER_AUTH="${LARAVEL_COMPOSER_AUTH}" \
+                                    composer install \
+                                        --no-interaction \
+                                        --no-progress
+        else
+            silent sudo -u "${NGINX_USER}" \
+                                    composer install \
+                                        --no-interaction \
+                                        --no-progress
+        fi
+        local _exit_code=$?
+        if [ "${_exit_code}" -ne 0 ]; then
+            print_error "Composer install failed (exit code ${_exit_code}) - retrying with output visible"
+            if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then
+                sudo -u "${NGINX_USER}" \
+                                    COMPOSER_AUTH="${LARAVEL_COMPOSER_AUTH}" \
+                                    composer install \
+                                        --no-interaction \
+                                        --no-progress
+            else
+                sudo -u "${NGINX_USER}" \
+                                    composer install \
+                                        --no-interaction \
+                                        --no-progress
+            fi
+            exit 1
+        fi
+    fi
+
+    if var_true "${LARAVEL_MIGRATE_ON_FIRST_INSTALL}" ; then
+        cd "${NGINX_WEBROOT}"
+        if grep -qi "DB_CONNECTION=sqlite" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+            local _db_path
+            _db_path=$(grep -i "^DB_DATABASE=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null | cut -d'=' -f2 | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs)
+            if [ -n "${_db_path}" ] && [ "${_db_path}" != ":memory:" ]; then
+                case "${_db_path}" in
+                    /*) ;;
+                    *)  _db_path="${NGINX_WEBROOT%/}/${_db_path}" ;;
+                esac
+                if [ ! -f "${_db_path}" ]; then
+                    print_info "Creating SQLite database at '${_db_path}'"
+                    sudo -u "${NGINX_USER}" touch "${_db_path}"
+                fi
+            fi
+        fi
+
+        print_info "Running database migrations"
+        silent sudo -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan migrate --force
+        local _migrate_code=$?
+        if [ "${_migrate_code}" -ne 0 ]; then
+            print_error "Database migration failed (exit code ${_migrate_code}) - retrying with output visible"
+            sudo -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan migrate --force
+            exit 1
+        fi
+
+        laravel_artisan_setup_commands
+    fi
+
+    if var_true "${LARAVEL_NPM_SETUP}" ; then
+        print_info "Installing Node dependencies"
+        cd "${NGINX_WEBROOT}"
+        silent sudo -u "${NGINX_USER}" npm install
+        local _npm_code=$?
+        if [ "${_npm_code}" -ne 0 ]; then
+            print_error "npm install failed (exit code ${_npm_code}) - retrying with output visible"
+            sudo -u "${NGINX_USER}" npm install
+            exit 1
+        fi
+
+        print_info "Building frontend assets"
+        silent sudo -u "${NGINX_USER}" npm run build
+        local _build_code=$?
+        if [ "${_build_code}" -ne 0 ]; then
+            print_error "npm run build failed (exit code ${_build_code}) - retrying with output visible"
+            sudo -u "${NGINX_USER}" npm run build
+            exit 1
+        fi
+    fi
+}
+
+laravel_env_remove() {
+    # laravel_env_remove KEY
+    local _key="$1"
+    if [ -f "${NGINX_WEBROOT%/}"/.env ] && grep -qE "^${_key}=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+        print_debug "[env_remove] Removing .env entry '${_key}'"
+        sed -i --follow-symlinks "/^${_key}=/d" "${NGINX_WEBROOT%/}"/.env
+    fi
+}
+
+laravel_env_passthrough() {
+    #   ENV_FOO=bar                 -     .env line `FOO=bar`  (added or rewritten)
+    #   ENV_FOO=unset|null|""       -     .env line `FOO=bar`  (removed)
+
+    local _prefix="${LARAVEL_ENV_PREFIX}"
+    if [ -z "${_prefix}" ]; then
+        print_debug "[env_passthrough] LARAVEL_ENV_PREFIX is empty - skipping env-prefix pass-through"
+        return
+    fi
+    if [ ! -f "${NGINX_WEBROOT%/}"/.env ]; then
+        print_debug "[env_passthrough] No .env file present - skipping env-prefix pass-through"
+        return
+    fi
+
+    transform_var file "${_prefix}*"
+
+    print_debug "[env_passthrough] Applying passthrough (prefix='${_prefix}')"
+
+    local _line _name _stripped _value
+    while IFS= read -r _line; do
+        _name="${_line%%=*}"
+        case "${_name}" in
+            "${_prefix}"*) ;;
+            *) continue ;;
+        esac
+
+
+        # Skip container-owned LARAVEL_* control variables when LARAVEL_ENV_PREFIX=LARAVEL_
+        case "${_name}" in
+            LARAVEL_ENV_PREFIX|LARAVEL_GIT_*|LARAVEL_COMPOSER_*|LARAVEL_NPM_*|LARAVEL_ADMIN_*|LARAVEL_ARTISAN_SETUP_COMMANDS*|LARAVEL_IMAGE_MODE|LARAVEL_CONFIGURE_*|LARAVEL_INSTALL_DATA_PATH|LARAVEL_COPY_ENV_EXAMPLE|LARAVEL_MIGRATE_ON_FIRST_INSTALL|LARAVEL_DB_FRESH_CHECK_TABLE) continue ;;
+        esac
+
+        case "${_name}" in
+            *_FILE) continue ;;
+        esac
+
+        _stripped="${_name#${_prefix}}"
+        if [ -z "${_stripped}" ]; then
+            continue
+        fi
+        _value="${_line#*=}"
+
+        case "${_value,,}" in
+            unset|null|"")
+                laravel_env_remove "${_stripped}"
+            ;;
+            *)
+                laravel_env_update "${_stripped}" "${_value}"
+            ;;
+        esac
+    done < <(printenv)
+}
+
+laravel_env_update() {
+    # laravel_env_update KEY VALUE
+    # Set or update a key=value pair in the application .env file. If the key already exists, replace the line via sed. If the key is absent, append a new line. Values containing whitespace are quoted.
+    local _key="$1"
+    local _val="$2"
+
+    if [ ! -f "${NGINX_WEBROOT%/}"/.env ]; then
+        print_debug "No .env file - skipping update for '${_key}'"
+        return
+    fi
+
+    if grep -qE "^${_key}=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+        print_debug "[env_update] Updating .env '${_key}' = '${_val}'"
+        if [[ ${_val} = *[[:space:]]* ]]; then
+            sed -i --follow-symlinks "s|^${_key}=.*|${_key}=\"${_val}\"|" "${NGINX_WEBROOT%/}"/.env
+        else
+            sed -i --follow-symlinks "s|^${_key}=.*|${_key}=${_val}|" "${NGINX_WEBROOT%/}"/.env
+        fi
+    else
+        print_debug "[env_update] Appending .env '${_key}' = '${_val}'"
+        if [[ ${_val} = *[[:space:]]* ]]; then
+            echo "${_key}=\"${_val}\"" | write_file -a "${NGINX_USER}":"${NGINX_GROUP}"@"${NGINX_WEBROOT%/}"/.env
+        else
+            echo "${_key}=${_val}" | write_file -a "${NGINX_USER}":"${NGINX_GROUP}"@"${NGINX_WEBROOT%/}"/.env
+        fi
+    fi
+}
+
+laravel_env_write_header() {
+    # Write header to brand new .env file with instructions for users. Does nothing if .env already exists and is not empty to avoid overwriting existing config or comments.
+    local _env_file="${NGINX_WEBROOT%/}/.env"
+
+    if [ -s "${_env_file}" ]; then
+        return
+    fi
+
+    local _prefix="${LARAVEL_ENV_PREFIX}"
+
+    print_debug "[env_write_header] Writing header to new .env (prefix='${_prefix}')"
+
+    write_file "${NGINX_USER}":"${NGINX_GROUP}"@"${_env_file}":660 << EOF
+## Auto-generated by ${IMAGE_NAME} | ## First Generated on $(TZ=${TIMEZONE} date +'%Y-%m-%d %H:%M:%S %Z')
+## This file is managed by the container at startup - Values are written at container startup
+##  To set or change a value, set an environment variable on the container using the prefix '${_prefix}'. The prefix is stripped before writing
+##
+##   ${_prefix}APP_DEBUG=true            -> APP_DEBUG=true
+##   ${_prefix}MAIL_HOST=postfix-relay   -> MAIL_HOST=postfix-relay
+##
+## To remove a key, set its env var to one of: 'unset', 'null', or empty:
+##
+##   ${_prefix}APP_DEBUG=unset
+##   ${_prefix}APP_DEBUG=null#
+##   ${_prefix}APP_DEBUG=
+##
+## Secrets: ${_prefix}<KEY>_FILE=/run/secrets/<name> reads the file contents and populates <KEY>=<contents>.
+##
+## Alternatively, you can stop this mechanism by setting 'SETUP_TYPE=manual'
+
+EOF
+}
+
+laravel_configure_app_key() {
+    if var_true "${LARAVEL_CONFIGURE_APP_KEY}" ; then
+        cd "${NGINX_WEBROOT}"
+        transform_var file \
+                            APP_KEY
+        if [ -n "${APP_KEY}" ] ; then
+            print_debug "[configure_app_key] Setting APP_KEY from Environment Variable"
+            laravel_env_update APP_KEY "${APP_KEY}"
+        else
+            print_debug "[configure_app_key] Generating APP_KEY via --show + env_update"
+            local _generated_key
+            _generated_key=$(sudo -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan key:generate --show 2>/dev/null)
+            if [ -n "${_generated_key}" ]; then
+                laravel_env_update APP_KEY "${_generated_key}"
+            else
+                print_warn "[configure_app_key] Could not generate APP_KEY - artisan key:generate --show returned nothing"
+            fi
+        fi
+    fi
+}
+
+laravel_configure_db() {
+    if var_true "${LARAVEL_CONFIGURE_DB}" ; then
+        print_debug "[configure_db] Writing DB config (DB_TYPE='${DB_TYPE}')"
+        transform_var file \
+                            DB_HOST \
+                            DB_NAME \
+                            DB_PASS \
+                            DB_USER
+
+        case "${DB_TYPE,,}" in
+            mariadb | mysql )
+                laravel_env_update DB_CONNECTION mysql
+                laravel_env_update DB_HOST     "${DB_HOST}"
+                laravel_env_update DB_PORT     "${DB_PORT}"
+                laravel_env_update DB_DATABASE "${DB_NAME}"
+                laravel_env_update DB_USERNAME "${DB_USER}"
+                laravel_env_update DB_PASSWORD "${DB_PASS}"
+            ;;
+            pgsql | postgres* )
+                laravel_env_update DB_CONNECTION pgsql
+                laravel_env_update DB_HOST     "${DB_HOST}"
+                laravel_env_update DB_PORT     "${DB_PORT}"
+                laravel_env_update DB_DATABASE "${DB_NAME}"
+                laravel_env_update DB_USERNAME "${DB_USER}"
+                laravel_env_update DB_PASSWORD "${DB_PASS}"
+                if [ -n "${DB_SSL_MODE}" ]; then
+                    laravel_env_update DB_SSLMODE "${DB_SSL_MODE}"
+                fi
+            ;;
+            sqlite* )
+                laravel_env_update DB_CONNECTION sqlite
+                laravel_env_update DB_DATABASE "${DB_NAME}"
+                laravel_env_remove DB_HOST
+                laravel_env_remove DB_PORT
+                laravel_env_remove DB_USERNAME
+                laravel_env_remove DB_PASSWORD
+            ;;
+            *)
+                print_error "[configure_db] Unsupported DB_TYPE='${DB_TYPE}' - Use 'mariadb, mysql, pgsql/postgres, sqlite'"
+                exit 1
+            ;;
+        esac
+    fi
+}
+
+laravel_configure_laravel() {
+    if var_true "${LARAVEL_CONFIGURE_LARAVEL}" ; then
+        print_debug "[configure_laravel] Updating Laravel Core"
+        laravel_env_update APP_NAME "${APP_NAME}"
+        laravel_env_update APP_URL "${SITE_URL}"
+        laravel_env_update APP_ENV "${STAGE}"
+        laravel_env_update APP_DEBUG "${APP_DEBUG}"
+        laravel_env_update BROADCAST_DRIVER ${BROADCAST_DRIVER}
+        laravel_env_update CACHE_DRIVER ${CACHE_DRIVER}
+        laravel_env_update MEDIA_DISK "${MEDIA_DISK}"
+        create_folder \
+                        "${NGINX_WEBROOT%/}/public/${MEDIA_DISK},\
+                        ${NGINX_WEBROOT%/}/public/uploads/" \
+                        "${NGINX_USER}":"${NGINX_GROUP}" 775
+        laravel_env_update SESSION_DRIVER ${SESSION_DRIVER}
+        laravel_env_update SESSION_LIFETIME ${SESSION_LIFETIME}
+    fi
+}
+
+laravel_configure_ldap() {
+    if var_true "${LARAVEL_CONFIGURE_LDAP}" ; then
+        print_debug "[configure_ldap] Updating LDAP"
+        sanity_var LDAP_HOST "LDAP Hostname"
+        sanity_var LDAP_BASE_DN "LDAP Base DN"
+        sanity_var LDAP_BIND_USER "LDAP Bind User"
+        sanity_var LDAP_BIND_PASS "LDAP Bind Password"
+
+        laravel_env_update LDAP_BASE_DN ${LDAP_BASE_DN}
+        laravel_env_update LDAP_CONNECTION ${LDAP_CONNECTION}
+        laravel_env_update LDAP_HOST ${LDAP_HOST}
+        laravel_env_update LDAP_LOGGING "${LOG_LDAP}"
+        laravel_env_update LDAP_PASSWORD "${LDAP_BIND_PASS}"
+        laravel_env_update LDAP_PORT ${LDAP_PORT}
+        laravel_env_update LDAP_SSL ${LDAP_SSL}
+        laravel_env_update LDAP_TIMEOUT ${LDAP_TIMEOUT}
+        laravel_env_update LDAP_TLS ${LDAP_TLS}
+        laravel_env_update LDAP_USERNAME "${LDAP_BIND_USER}"
+    fi
+}
+
+laravel_configure_logging() {
+    if var_true "${LARAVEL_CONFIGURE_LOGGING}" ; then
+        print_debug "Updating Logging"
+        if [ "${CONTAINER_LOG_LEVEL,,}" = "debug" ] ; then
+            LOG_LEVEL=debug
+        fi
+        laravel_env_update LOG_CHANNEL "${LOG_CHANNEL}"
+        laravel_env_update LOG_LEVEL "${LOG_LEVEL}"
+    fi
+}
+
+laravel_configure_mail() {
+    if var_true "${LARAVEL_CONFIGURE_MAIL}" ; then
+        print_debug "[configure_mail] Updating Mail"
+
+        if [ -n "${MAIL_TYPE}" ]; then
+            laravel_env_update MAIL_TYPE "${MAIL_TYPE}"
+        fi
+        if [ -n "${MAIL_FROM_ADDRESS}" ]; then
+            laravel_env_update MAIL_FROM_ADDRESS "${MAIL_FROM_ADDRESS}"
+        fi
+        if [ -n "${MAIL_FROM_NAME}" ]; then
+            laravel_env_update MAIL_FROM_NAME "${MAIL_FROM_NAME}"
+        fi
+
+        if [ -z "${MAIL_HOST}" ]; then
+            if [ -n "${SMTP_HOST}" ]; then
+                MAIL_HOST="${SMTP_HOST}"
+            fi
+        fi
+        if [ -n "${MAIL_HOST}" ]; then
+            laravel_env_update MAIL_HOST "${MAIL_HOST}"
+        fi
+
+        if [ -z "${MAIL_PORT}" ]; then
+            if [ -n "${SMTP_PORT}" ]; then
+                MAIL_PORT="${SMTP_PORT}"
+            fi
+        fi
+        if [ -n "${MAIL_PORT}" ]; then
+            laravel_env_update MAIL_PORT "${MAIL_PORT}"
+        fi
+
+        transform_var file \
+                            MAIL_USERNAME \
+                            MAIL_PASSWORD \
+                            SMTP_USER \
+                            SMTP_PASS
+        if [ -z "${MAIL_USERNAME}" ]; then
+            if [ -n "${SMTP_USER}" ]; then
+                MAIL_USERNAME="${SMTP_USER}"
+            fi
+        fi
+        if [ -n "${MAIL_USERNAME}" ]; then
+            laravel_env_update MAIL_USERNAME "${MAIL_USERNAME}"
+        fi
+        if [ -z "${MAIL_PASSWORD}" ]; then
+            if [ -n "${SMTP_PASS}" ]; then
+                MAIL_PASSWORD="${SMTP_PASS}"
+            fi
+        fi
+        if [ -n "${MAIL_PASSWORD}" ]; then
+            laravel_env_update MAIL_PASSWORD "${MAIL_PASSWORD}"
+        fi
+
+        if [ -z "${MAIL_ENCRYPTION}" ]; then
+            if [ -n "${SMTP_ENCRYPTION}" ]; then
+                MAIL_ENCRYPTION="${SMTP_ENCRYPTION}"
+            fi
+        fi
+        if [ -n "${MAIL_ENCRYPTION}" ]; then
+            laravel_env_update MAIL_ENCRYPTION "${MAIL_ENCRYPTION}"
+        fi
+    fi
+}
+
+laravel_configure_vite_hmr() {
+    if var_true "${ENABLE_LARAVEL_VITE_HMR}" ; then
+        _hmr_host="${VITE_HMR_HOST:-}"
+        if [ -z "${_hmr_host}" ] && [ -f "${NGINX_WEBROOT%/}"/.env ]; then
+            _app_url=$(grep -i "^APP_URL=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null | cut -d'=' -f2 | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs)
+            if [ -n "${_app_url}" ]; then
+                _hmr_host=$(echo "${_app_url}" | sed -n 's|https\?://\([^:/]*\).*|\1|p')
+            fi
+        fi
+
+        if [ -n "${_hmr_host}" ]; then
+            print_info "[configure_vite_hmr] Configuring Vite HMR for remote development (host: ${_hmr_host})"
+            if [ -f "${NGINX_WEBROOT%/}"/.env ]; then
+                if grep -qi "^VITE_HMR_HOST=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+                    sed -i --follow-symlinks "s|^VITE_HMR_HOST=.*|VITE_HMR_HOST=${_hmr_host}|" "${NGINX_WEBROOT%/}"/.env
+                else
+                    echo "VITE_HMR_HOST=${_hmr_host}" | write_file -a "${NGINX_WEBROOT%/}"/.env
+                fi
+            fi
+
+            if [ -f "${NGINX_WEBROOT%/}"/vite.config.js ]; then
+                if ! grep -q "VITE_HMR_HOST" "${NGINX_WEBROOT%/}"/vite.config.js 2>/dev/null; then
+                    print_info "Patching vite.config.js with HMR configuration"
+                    sudo -u "${NGINX_USER}" php -r '
+                        $f = $argv[1];
+                        $c = file_get_contents($f);
+
+                        if (strpos($c, "VITE_HMR_HOST") !== false) exit(0);
+
+                        $serverBlock = "    server: {\n"
+                            . "        host: '\''0.0.0.0'\'',\n"
+                            . "        ...(process.env.VITE_HMR_HOST ? {\n"
+                            . "            origin: \`https://\${process.env.VITE_HMR_HOST}\`,\n"
+                            . "            hmr: { host: process.env.VITE_HMR_HOST, protocol: '\''wss'\'', clientPort: 443, path: '\''/@vite/hmr'\'' },\n"
+                            . "        } : {}),\n"
+                            . "        watch: {\n"
+                            . "            ignored: ['\''**/storage/framework/views/**'\''],\n"
+                            . "        },\n"
+                            . "    },";
+
+                        if (preg_match("/    server\s*:\s*\{.*?\n    \},/s", $c)) {
+                            $c = preg_replace("/    server\s*:\s*\{.*?\n    \},/s", $serverBlock, $c);
+                        } elseif (strpos($c, "server:") === false) {
+                            $c = preg_replace("/(plugins\s*:\s*\[.*?\],)/s", "$1\n" . $serverBlock, $c);
+                        }
+
+                        file_put_contents($f, $c);
+                    ' "${NGINX_WEBROOT%/}"/vite.config.js
+                fi
+            fi
+        fi
+    else
+        if [ -f "${NGINX_WEBROOT%/}"/.env ] && grep -qi "^VITE_HMR_HOST=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+            print_debug "[configure_vite_hmr] Removing Vite HMR configuration"
+            sed -i --follow-symlinks "/^VITE_HMR_HOST=/d" "${NGINX_WEBROOT%/}"/.env
+        fi
+    fi
+}
+
+laravel_db_is_populated() {
+    local _table="${LARAVEL_DB_FRESH_CHECK_TABLE}"
+    case "${DB_TYPE,,}" in
+        sqlite* )
+            local _path="${DB_DATABASE:-${NGINX_WEBROOT%/}/database/database.sqlite}"
+            case "${_path}" in /*) ;; *) _path="${NGINX_WEBROOT%/}/${_path}" ;; esac
+            if [ ! -f "${_path}" ]; then
+                return 1
+            fi
+            if sqlite3 "${_path}" ".tables" 2>/dev/null | tr ' ' '\n' | grep -qx "${_table}"; then
+                return 0
+            fi
+            return 1
+        ;;
+        mariadb | mysql )
+            local _ssl=""
+            case "${DB_SSL,,}" in
+                true)  _ssl="--ssl" ;;
+                false) _ssl="--skip-ssl" ;;
+            esac
+            if ! mariadb ${_ssl} \
+                        -u"${DB_USER}" \
+                        -p"${DB_PASS}" \
+                        -h"${DB_HOST}" \
+                        -P"${DB_PORT}" \
+                        -e "SELECT 1;" "${DB_NAME}" > /dev/null 2>&1; then
+                print_error "Cannot connect to ${DB_HOST}:${DB_PORT}/${DB_NAME} (DB_SSL=${DB_SSL:-unset}) - exiting before any migrations run"
+                mariadb ${_ssl} \
+                        -u"${DB_USER}" \
+                        -p"${DB_PASS}" \
+                        -h"${DB_HOST}" \
+                        -P"${DB_PORT}" \
+                        -e "SELECT 1;" "${DB_NAME}"
+                exit 1
+            fi
+            if mariadb ${_ssl} \
+                        -u"${DB_USER}" \
+                        -p"${DB_PASS}" \
+                        -h"${DB_HOST}" \
+                        -P"${DB_PORT}" \
+                        -e "SHOW TABLES LIKE '${_table}';" "${DB_NAME}" 2>/dev/null \
+                    | grep -qx "${_table}"; then
+                return 0
+            fi
+            return 1
+        ;;
+        psql | pgsql | postgres* )
+            export PGPASSWORD="${DB_PASS}"
+            local _sslmode="${DB_SSL_MODE:-prefer}"
+            local _conn="postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${_sslmode}"
+            if ! psql "${_conn}" -c "SELECT 1;" > /dev/null 2>&1; then
+                print_error "Cannot connect to ${DB_HOST}:${DB_PORT}/${DB_NAME} (sslmode=${_sslmode}) - exiting before any migrations run"
+                psql "${_conn}" -c "SELECT 1;"
+                exit 1
+            fi
+            if psql "${_conn}" -tAc "SELECT to_regclass('public.${_table}');" 2>/dev/null \
+                    | tr -d ' ' | grep -qx "${_table}"; then
+                return 0
+            fi
+            return 1
+        ;;
+        * )
+            print_error "[laravel_db_is_populated] Unsupported DB_TYPE '${DB_TYPE}' - set DB_TYPE to 'mariadb / mysql / pgsql / postgres / sqlite'"
+            exit 1
+        ;;
+    esac
+}
+
+laravel_nginx_prune_fragments() {
+    # Downstream image helper sites.available/<site>/location/40-app-router.conf with its own location /.
+    local _site _fragment
+    for _site in $(echo "${NGINX_SITE_ENABLED}" | tr ',' ' '); do
+        if var_false "${LARAVEL_NGINX_ENABLE_ROUTER}"; then
+            _fragment="${NGINX_CONFIG_PATH%/}/sites.enabled/${_site}/location/30-01-router.conf"
+            if [ -e "${_fragment}" ] || [ -L "${_fragment}" ]; then
+                print_debug "[laravel_nginx_prune_fragments] LARAVEL_NGINX_ENABLE_ROUTER=FALSE - removing ${_fragment}"
+                rm -f "${_fragment}"
+            fi
+        fi
+        if var_false "${LARAVEL_NGINX_ENABLE_STATIC_PATHS}"; then
+            _fragment="${NGINX_CONFIG_PATH%/}/sites.enabled/${_site}/location/30-02-static_paths.conf"
+            if [ -e "${_fragment}" ] || [ -L "${_fragment}" ]; then
+                print_debug "[laravel_nginx_prune_fragments] LARAVEL_NGINX_ENABLE_STATIC_PATHS=FALSE - removing ${_fragment}"
+                rm -f "${_fragment}"
+            fi
+        fi
+    done
+}
+
+laravel_setup_webroot() {
+    if [ ! -f "${NGINX_WEBROOT%/}/artisan" ]; then
+        chown -R "${NGINX_USER}":"${NGINX_GROUP}" \
+                                                    "${NGINX_WEBROOT}" \
+                                                    /var/cache/nginx
+
+        transform_var file LARAVEL_GIT_REPO
+        if [ -n "${LARAVEL_GIT_REPO}" ]; then
+            print_debug "[setup_webroot] branch: git clone - LARAVEL_GIT_REPO is set"
+            _laravel_acquire_from_git
+            _laravel_post_source_setup
+        elif [ -d "${LARAVEL_INSTALL_DATA_PATH%/}/install" ] && dir_notempty "${LARAVEL_INSTALL_DATA_PATH%/}/install" ; then
+            print_debug "[setup_webroot] -> branch: install-from-data ('${LARAVEL_INSTALL_DATA_PATH%/}/install')"
+            _laravel_acquire_from_data_path
+            _laravel_post_source_setup
+        else
+            print_debug "[setup_webroot]  branch: composer create-project"
+            print_warn "Potential New Installation / Standalone Laravel Application detected"
+            print_info "Installing Base Laravel Application"
+            cd "${NGINX_WEBROOT}"
+
+            silent sudo -u "${NGINX_USER}" \
+                                    composer create-project \
+                                        laravel/laravel \
+                                            "${NGINX_WEBROOT}" \
+                                                --no-interaction \
+                                                --no-progress \
+                                                --no-scripts \
+                                                --prefer-dist
+
+            if [ -f "${NGINX_WEBROOT%/}"/package.json ]; then
+                print_info "Installing Node dependencies"
+                silent sudo -u "${NGINX_USER}" \
+                                                 npm \
+                                                    install
+            fi
+        fi
+    fi
+
+    if [ ! -f "${NGINX_WEBROOT%/}"/.gitignore ] && [ -f "${LARAVEL_INSTALL_DATA_PATH}/gitignore" ] ; then
+        print_debug "[setup_webroot] Creating .gitignore file"
+        cat "${LARAVEL_INSTALL_DATA_PATH}"/gitignore | write_file "${NGINX_USER}" "${NGINX_WEBROOT%/}"/.gitignore:644
+    fi
+}
+
+laravel_strip_path_repos() {
+    # Remove type: path Composer repositories from composer.json.
+    # Nfrastack only purpose
+    if [ ! -f "${NGINX_WEBROOT%/}"/composer.json ]; then
+        return
+    fi
+    _result=$(php -r '
+        $f = $argv[1];
+        $j = json_decode(file_get_contents($f), true);
+        if (isset($j["repositories"]) && is_array($j["repositories"])) {
+            $before = count($j["repositories"]);
+            $j["repositories"] = array_values(array_filter($j["repositories"], fn($r) => ($r["type"] ?? "") !== "path"));
+            if (count($j["repositories"]) < $before) {
+                file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+                echo "removed";
+            }
+        }
+    ' "${NGINX_WEBROOT%/}"/composer.json 2>/dev/null)
+    if [ "${_result}" = "removed" ]; then
+        print_debug "Stripped local path repositories from composer.json"
+    fi
+}
+
+laravel_setup_container_mode() {
+    modes=$(echo "${LARAVEL_IMAGE_MODE}" | tr "," "\n")
+    for mode in $modes; do
+        case "${mode,,}" in
+            prod* )
+                print_info "Laravel Image: Production Mode"
+                ENABLE_LARAVEL_ARTISAN_SERVE=${ENABLE_LARAVEL_ARTISAN_SERVE:-FALSE}
+                ENABLE_LARAVEL_NPM_RUN_DEV=${ENABLE_LARAVEL_NPM_RUN_DEV:-FALSE}
+                ENABLE_LARAVEL_WORKER=${ENABLE_LARAVEL_WORKER:-TRUE}
+                ENABLE_CONFIG_REDIRECTION=${ENABLE_CONFIG_REDIRECTION:-TRUE}
+                ENABLE_LOG_REDIRECTION=${ENABLE_LOG_REDIRECTION:-TRUE}
+                ENABLE_STORAGE_REDIRECTION=${ENABLE_STORAGE_REDIRECTION:-TRUE}
+            ;;
+            develop* | * )
+                print_info "Laravel Image: Development Mode"
+                ENABLE_LARAVEL_ARTISAN_SERVE=${ENABLE_LARAVEL_ARTISAN_SERVE:-TRUE}
+                ENABLE_LARAVEL_NPM_RUN_DEV=${ENABLE_LARAVEL_NPM_RUN_DEV:-TRUE}
+                ENABLE_LARAVEL_WORKER=${ENABLE_LARAVEL_WORKER:-"TRUE"}
+                ENABLE_CONFIG_REDIRECTION=${ENABLE_CONFIG_REDIRECTION:-FALSE}
+                ENABLE_LOG_REDIRECTION=${ENABLE_LOG_REDIRECTION:-FALSE}
+                ENABLE_STORAGE_REDIRECTION=${ENABLE_STORAGE_REDIRECTION:-FALSE}
+            ;;
+        esac
+    done
+}
+
+laravel_update_bashrc() {
+    if check_container_restarted ; then
+        write_file -a root:root@/root/.bashrc <<EOF
+artisan() {
+    export oldpwd="\$(pwd)"
+    cd ${NGINX_WEBROOT}
+    sudo -u ${NGINX_USER} php "${NGINX_WEBROOT%/}"/artisan "\$@"
+    cd "\${oldpwd}"
+}
+EOF
+    fi
+}
+
+laravel_volatile_setup() {
+    case "${@,,}" in
+        config )
+            if [ ! -d "${CONFIG_PATH}" ]; then
+                print_info "Creating Config Directory"
+                create_folder \
+                                "${CONFIG_PATH}" \
+                                "${NGINX_USER}":"${NGINX_GROUP}" 775
+            fi
+
+            _already_redirected=false
+            if [ -L "${NGINX_WEBROOT%/}"/.env ]; then
+                _target=$(readlink "${NGINX_WEBROOT%/}"/.env)
+                if [ "${_target}" = "${CONFIG_PATH%/}/${CONFIG_FILE}" ]; then
+                    _already_redirected=true
+                    print_debug "Config already redirected to '${CONFIG_PATH%/}/${CONFIG_FILE}'"
+                fi
+            fi
+
+            if ! ${_already_redirected}; then
+                if [ -s "${NGINX_WEBROOT%/}"/.env ] && [ ! -L "${NGINX_WEBROOT%/}"/.env ]; then
+                    if [ ! -s "${CONFIG_PATH%/}"/"${CONFIG_FILE}" ]; then
+                        print_info "Copying .env to Config Directory"
+                        cp "${NGINX_WEBROOT%/}"/.env "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
+                    else
+                        print_warn "Config File already exists, skipping copy"
+                    fi
+                fi
+                rm -rf "${NGINX_WEBROOT%/}"/.env
+                ln -sf "${CONFIG_PATH%/}"/"${CONFIG_FILE}" "${NGINX_WEBROOT%/}"/.env
+            fi
+
+            if [ ! -e "${CONFIG_PATH%/}"/"${CONFIG_FILE}" ]; then
+                sudo -u "${NGINX_USER}" touch "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
+                chmod 660 "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
+            fi
+
+            chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${CONFIG_PATH}"
+        ;;
+        log )
+            if [ ! -d "${LOG_PATH}" ]; then
+                print_info "Creating Log Directory"
+                create_folder \
+                                "${LOG_PATH}" \
+                                "${NGINX_USER}":"${NGINX_GROUP}" 770
+            fi
+
+            if [ ! -d "${NGINX_WEBROOT%/}"/storage ]; then
+                sudo -u "${NGINX_USER}" mkdir -p "${NGINX_WEBROOT%/}"/storage
+            fi
+
+            rm -rf "${NGINX_WEBROOT%/}"/storage/logs
+            ln -sf "${LOG_PATH}" "${NGINX_WEBROOT%/}"/storage/logs
+            create_logrotate laravel "${LOG_PATH%/}"/"${LOG_FILE}"
+        ;;
+        storage )
+            if [ ! -d "${STORAGE_PATH}" ]; then
+                print_info "Creating Storage Directory"
+                create_folder \
+                                "${STORAGE_PATH}" \
+                                "${NGINX_USER}":"${NGINX_GROUP}" 775
+            fi
+
+            _already_redirected=false
+            if [ -L "${NGINX_WEBROOT%/}"/storage ]; then
+                _target=$(readlink "${NGINX_WEBROOT%/}"/storage)
+                case "${_target}" in
+                    "${STORAGE_PATH}"|"${STORAGE_PATH%/}")
+                        _already_redirected=true
+                        print_debug "Storage already redirected to '${STORAGE_PATH}'"
+                        ;;
+                esac
+            fi
+
+            if ! ${_already_redirected}; then
+                if [ -d "${NGINX_WEBROOT%/}"/storage ] \
+                        && [ ! -L "${NGINX_WEBROOT%/}"/storage ] \
+                        && dir_empty "${STORAGE_PATH%/}"; then
+                    cp -aR "${NGINX_WEBROOT%/}"/storage/. "${STORAGE_PATH%/}"/
+                fi
+                rm -rf "${NGINX_WEBROOT%/}"/storage
+                ln -s "${STORAGE_PATH}" "${NGINX_WEBROOT%/}"/storage
+            fi
+
+            for _sub in app/public framework/cache framework/sessions framework/testing framework/views logs; do
+                if [ ! -d "${STORAGE_PATH%/}/${_sub}" ]; then
+                    create_folder "${STORAGE_PATH%/}/${_sub}" "${NGINX_USER}":"${NGINX_GROUP}" 775
+                fi
+            done
+        ;;
+    esac
+}

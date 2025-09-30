@@ -1,0 +1,26 @@
+#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
+
+source /container/base/functions/container/init
+SERVICE_NAME="laravel-npm_run_dev"
+
+prepare_service
+check_container_initialized
+check_service_initialized init 30-laravel
+liftoff
+
+print_start "Starting npm run dev"
+cd "${NGINX_WEBROOT}"
+
+_hmr_host="${VITE_HMR_HOST:-}"
+if [ -z "${_hmr_host}" ] && [ -f "${NGINX_WEBROOT%/}"/.env ]; then
+    _hmr_host=$(grep -i "^VITE_HMR_HOST=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null | cut -d'=' -f2 | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs)
+fi
+
+if [ -n "${_hmr_host}" ]; then
+    sudo -u "${NGINX_USER}" VITE_HMR_HOST="${_hmr_host}" npm run dev
+else
+    sudo -u "${NGINX_USER}" npm run dev
+fi

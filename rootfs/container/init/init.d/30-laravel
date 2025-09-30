@@ -1,0 +1,121 @@
+#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
+
+source /container/base/functions/container/init
+
+prepare_service single
+SERVICE_NAME="laravel"
+
+laravel_nginx_prune_fragments
+laravel_setup_webroot
+laravel_strip_path_repos
+laravel_setup_container_mode
+
+if var_true "${ENABLE_STORAGE_REDIRECTION}" ; then
+    print_info "Setting up storage redirection to '${STORAGE_PATH}'"
+    call laravel_volatile_setup storage
+fi
+
+if var_true "${ENABLE_LOG_REDIRECTION}" ; then
+    print_info "Setting up log redirection to '${LOG_PATH}'"
+    call laravel_volatile_setup log
+fi
+
+if var_true "${ENABLE_CONFIG_REDIRECTION}" ; then
+    print_info "Setting up config redirection to '${CONFIG_PATH}'"
+    call laravel_volatile_setup config
+fi
+
+call laravel_volatile_setup logs
+
+if [ "${SETUP_TYPE,,}" = "auto" ]; then
+    print_notice "Generating Configuration"
+    if [ ! -s "${NGINX_WEBROOT%/}/.env" ] ; then
+        if var_true "${LARAVEL_COPY_ENV_EXAMPLE}" ; then
+            if [ -f "${LARAVEL_INSTALL_DATA_PATH}/.env.example" ] ; then
+                print_debug "Seeding .env from container template '${LARAVEL_INSTALL_DATA_PATH}/.env.example'"
+                cat "${LARAVEL_INSTALL_DATA_PATH}"/.env.example | write_file "${NGINX_USER}":"${NGINX_GROUP}"@"${NGINX_WEBROOT}"/.env:660
+            elif [ -f "${NGINX_WEBROOT%/}"/.env.example ] ; then
+                print_debug "Seeding .env from application template '${NGINX_WEBROOT%/}/.env.example'"
+                cat "${NGINX_WEBROOT%/}"/.env.example | write_file "${NGINX_USER}":"${NGINX_GROUP}"@"${NGINX_WEBROOT}"/.env:660
+            else
+                print_debug "[auto] .env is empty and no .env.example available in '${LARAVEL_INSTALL_DATA_PATH}' or '${NGINX_WEBROOT%/}' - .env stays empty"
+            fi
+        fi
+    fi
+
+    call laravel_env_write_header
+
+    call laravel_configure_app_key
+    call laravel_configure_application
+    call laravel_configure_db
+    call laravel_configure_laravel
+    call laravel_configure_ldap
+    call laravel_configure_logging
+    call laravel_configure_mail
+fi
+
+call laravel_configure_vite_hmr
+
+if var_false "${ENABLE_LARAVEL_WORKER}" ; then
+    service_stop 30-laravel-worker
+else
+    if [ ! -f "${NGINX_WEBROOT%/}/artisan" ] ; then
+        service_stop 30-laravel-worker
+    fi
+fi
+
+if var_false "${ENABLE_LARAVEL_ENV_WATCHER}" ; then
+    service_stop 31-laravel-env_watcher
+else
+    if [ ! -f "${NGINX_WEBROOT%/}/.env" ] ; then
+        service_stop 31-laravel-env_watcher
+    fi
+fi
+
+if var_false "${ENABLE_LARAVEL_NPM_WATCHER}" ; then
+    service_stop 32-laravel-npm_watcher
+else
+    if [ ! -f "${NGINX_WEBROOT%/}/package.json" ] ; then
+        service_stop 32-laravel-npm_watcher
+    fi
+fi
+
+if var_false "${ENABLE_LARAVEL_ARTISAN_SERVE}" ; then
+    service_stop 33-laravel-artisan_serve
+else
+    if [ ! -f "${NGINX_WEBROOT%/}/artisan" ] ; then
+        service_stop 33-laravel-artisan_serve
+    else
+        service_stop 10-nginx
+        service_stop 11-nginx-config-reload
+        service_stop 20-php-fpm
+    fi
+fi
+if var_false "${ENABLE_LARAVEL_NPM_RUN_DEV}" ; then
+    service_stop 34-laravel-npm_run_dev
+else
+    if [ ! -f "${NGINX_WEBROOT%/}/package.json" ] ; then
+        service_stop 34-laravel-npm_run_dev
+    fi
+fi
+
+if [ "${SETUP_TYPE,,}" = "auto" ] ; then
+    if [ -f "${NGINX_WEBROOT}"/artisan ] ; then
+        print_debug "[cache_cleanup] Cleaning up Cache and Views"
+        silent sudo -u "${NGINX_USER}" php artisan cache:clear
+        silent sudo -u "${NGINX_USER}" php artisan view:clear
+    fi
+fi
+
+call laravel_update_bashrc
+
+## TODO
+
+#chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"
+#chmod ug+rwx "${NGINX_WEBROOT}"
+
+
+liftoff
