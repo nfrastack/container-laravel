@@ -7,25 +7,25 @@ source /container/base/functions/container/init
 prepare_service
 SERVICE_NAME="laravel"
 
-_laravel_setup_webroot
-_laravel_setup_container_mode
+laravel_setup_webroot
+laravel_setup_container_mode
 
 if var_true "${ENABLE_LOG_REDIRECTION}" ; then
     print_info "Setting up log redirection to '${LOG_PATH}'"
-    _laravel_volatile_setup log
+    laravel_volatile_setup log
 fi
 
 if var_true "${ENABLE_CONFIG_REDIRECTION}" ; then
     print_info "Setting up config redirection to '${CONFIG_PATH}'"
-    _laravel_volatile_setup config
+    laravel_volatile_setup config
 fi
 
 if var_true "${ENABLE_STORAGE_REDIRECTION}" ; then
     print_info "Setting up storage redirection to '${STORAGE_PATH}'"
-    _laravel_volatile_setup storage
+    laravel_volatile_setup storage
 fi
 
-_laravel_volatile_setup logs
+laravel_volatile_setup logs
 
 if [ "${SETUP_TYPE,,}" = "auto" ]; then
     print_notice "Generating Configuration"
@@ -36,13 +36,13 @@ if [ "${SETUP_TYPE,,}" = "auto" ]; then
     #chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env
     ##fi
 #
-    #_laravel_configure_app_key
-    #_laravel_configure_application
-    #_laravel_configure_db
-    #_laravel_configure_laravel
-    #_laravel_configure_ldap
-    #_laravel_configure_logging
-    #_laravel_configure_mail
+    #laravel_configure_app_key
+    #laravel_configure_application
+    #laravel_configure_db
+    #laravel_configure_laravel
+    #laravel_configure_ldap
+    #laravel_configure_logging
+    #laravel_configure_mail
 fi
 
 if var_false "${ENABLE_LARAVEL_WORKER}" ; then
@@ -99,6 +99,6 @@ cd "${NGINX_WEBROOT}"
 chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"
 chmod ug+rwx "${NGINX_WEBROOT}"
 
-_laravel_update_bashrc
+laravel_update_bashrc
 
 liftoff

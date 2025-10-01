@@ -4,12 +4,12 @@
 
 DATA_PATH=${DATA_PATH:-"/data"}
 #
+
 if [ "${STAGE,,}" = "develop" ] ; then
     APP_DEBUG=${APP_DEBUG:-"TRUE"}
 else
     APP_DEBUG=${APP_DEBUG:-"FALSE"}
 fi
-
 
 APP_NAME=${APP_NAME:-"Application"}
 ARTISAN_SERVE_LISTEN_IP=${ARTISAN_SERVE_LISTEN_IP:-"0.0.0.0"}

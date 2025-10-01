@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-_laravel_update_env() {
+laravel_update_env() {
     print_debug "Updating .env '$1' with '$2' value"
     if [[ $2 = *[[:space:]]* ]] ; then
         sed -i --follow-symlinks "s|${1}=.*|$1=\"$2\"|g" "${NGINX_WEBROOT}"/.env
@@ -11,7 +11,7 @@ _laravel_update_env() {
     fi
 }
 
-_laravel_configure_db() {
+laravel_configure_db() {
     print_debug "Updating DB Information"
     ## MariaDB
     update_env DB_DATABASE "${DB_NAME}"
@@ -21,7 +21,7 @@ _laravel_configure_db() {
     update_env DB_USERNAME "${DB_USER}"
 }
 
-_laravel_configure_laravel() {
+laravel_configure_laravel() {
     print_debug "Updating Laravel Information"
     update_env APP_NAME "${APP_NAME}"
     update_env APP_URL "${SITE_URL}"
@@ -37,7 +37,7 @@ _laravel_configure_laravel() {
 }
 
 
-_laravel_configure_mail() {
+laravel_configure_mail() {
     print_debug "Updating Mail"
     update_env MAIL_ENCRYPTION "${SMTP_ENCRYPTION}"
     update_env MAIL_FROM_ADDRESS "${MAIL_FROM_ADDRESS}"
@@ -49,7 +49,7 @@ _laravel_configure_mail() {
     update_env MAIL_USERNAME ${SMTP_USER}
 }
 
-_laravel_configure_ldap() {
+laravel_configure_ldap() {
     print_debug "Updating LDAP"
     sanity_var LDAP_HOST "LDAP Hostname"
     sanity_var LDAP_BASE_DN "LDAP Base DN"
@@ -68,7 +68,7 @@ _laravel_configure_ldap() {
     update_env LDAP_USERNAME "${LDAP_BIND_USER}"
 }
 
-_laravel_configure_logging() {
+laravel_configure_logging() {
     print_debug "Updating Logging"
     if [ "${CONTAINER_LOG_LEVEL,,}" = "debug" ] ; then
         LOG_LEVEL=debug
@@ -77,13 +77,13 @@ _laravel_configure_logging() {
     update_env LOG_LEVEL "${LOG_LEVEL}"
 }
 
-_laravel_configure_app_key() {
+laravel_configure_app_key() {
     cd "${NGINX_WEBROOT}"
     chown "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env
     silent sudo -u "${NGINX_USER}" php artisan key:generate --force
 }
 
-_laravel_setup_webroot() {
+laravel_setup_webroot() {
     if [ ! -f "${NGINX_WEBROOT}/artisan" ]; then
         print_warn "Potential New Installation / Standalone Laravel Application detected"
         chown -R "${NGINX_USER}":"${NGINX_GROUP}" \
@@ -113,7 +113,7 @@ _laravel_setup_webroot() {
     fi
 }
 
-_laravel_volatile_setup() {
+laravel_volatile_setup() {
     case "${@,,}" in
         config )
             if [ ! -d "${CONFIG_PATH}" ]; then
@@ -159,7 +159,7 @@ _laravel_volatile_setup() {
     esac
 }
 
-_laravel_setup_container_mode() {
+laravel_setup_container_mode() {
     modes=$(echo "${LARAVEL_IMAGE_MODE}" | tr "," "\n")
     for mode in $modes; do
         case "${mode,,}" in
@@ -189,9 +189,8 @@ _laravel_setup_container_mode() {
     done
 }
 
-_laravel_update_bashrc() {
+laravel_update_bashrc() {
     if check_container_restarted ; then
-        ### Add alias for running artisan
         cat <<EOF | tee -a /root/.bashrc
 function artisan() {
     export oldpwd="\$(pwd)"
