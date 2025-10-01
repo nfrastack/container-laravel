@@ -1,10 +1,10 @@
-name: alpine
+name: build
 
 on:
   workflow_call
 
 jobs:
-  build_alpine:
+  build:
     runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
@@ -26,7 +26,6 @@ jobs:
        PHP_VERSION_LATEST: ${{ matrix.build.php_version_latest || 'false' }}
        ARCH: ${{ matrix.build.arch || 'linux/amd64,linux/arm64' }}
     steps:
-
       - name: Build Image
         uses: nfrastack/gha/.github/actions/build_phpfpm_dependent_multi_image@main
         with:
