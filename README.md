@@ -1,4 +1,4 @@
-# nfrastack/container-nginx-php-fpm
+# nfrastack/container-laravel
 
 ## About
 
@@ -257,7 +257,7 @@ Laravel Artisan Serve Limitations:
 - Cannot handle concurrent requests effectively
 
 Production Benefits:
-- **Nginx + PHP-FPM**: Multi-process, multi-threaded architecture for handling concurrent requests
+- Nginx + PHP-FPM: Multi-process, multi-threaded architecture for handling concurrent requests
 - Performance: Optimized for high-traffic, production workloads
 - Security: Production-hardened web server configuration
 - Reliability: Better error handling and recovery mechanisms
