@@ -191,8 +191,8 @@ laravel_setup_container_mode() {
 
 laravel_update_bashrc() {
     if check_container_restarted ; then
-        cat <<EOF | tee -a /root/.bashrc
-function artisan() {
+        cat <<EOF | silent tee -a /root/.bashrc
+artisan() {
     export oldpwd="\$(pwd)"
     cd ${NGINX_WEBROOT}
     sudo -u ${NGINX_USER} php artisan "\$@"
