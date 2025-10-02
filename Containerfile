@@ -53,8 +53,10 @@ RUN echo "" && \
     package update && \
     package upgrade && \
     package install \
+                        LARAVEL_BUILD_DEPS \
                         LARAVEL_RUN_DEPS \
                         && \
+
     php-ext prepare && \
     php-ext reset && \
     php-ext enable core && \
