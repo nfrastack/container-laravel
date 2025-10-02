@@ -2,7 +2,7 @@
 
 ## About
 
-This repository will build a conatiner image for running [Laravel](https://laravel.net/) applications either in a development or production capacity, including [Nginx](https://www.nginx.org) w/[PHP-FPM](https://php.net).
+This repository will build a container image for running [Laravel](https://laravel.net/) applications either in a development or production capacity, including [Nginx](https://www.nginx.org) w/[PHP-FPM](https://php.net).
 
 ## Maintainer
 
@@ -33,7 +33,7 @@ This repository will build a conatiner image for running [Laravel](https://larav
 
 ### Prebuilt Images
 
-Feature limited builds of the image are available on the [Github Container Registry](https://github.com/nfrastack/container-laravel/pkgs/container/container-laravel) and [Docker Hub](https://hub.docker.com/r/nfrastack/nginx-php-fpm).
+Feature limited builds of the image are available on the [Github Container Registry](https://github.com/nfrastack/container-laravel/pkgs/container/container-laravel) and [Docker Hub](https://hub.docker.com/r/nfrastack/laravel).
 
 To unlock advanced features, one must provide a code to be able to change specific environment variables from defaults. Support the development to gain access to a code.
 
