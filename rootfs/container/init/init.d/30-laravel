@@ -32,7 +32,7 @@ if [ "${SETUP_TYPE,,}" = "auto" ]; then
 
     ##if [ ! -f "${NGINX_WEBROOT}/.env" ] ; then
     #print_debug "Copying Example .env to .env"
-    #cat /assets/install/.env.example > "${NGINX_WEBROOT}"/.env
+    #cat /container/data/laravel/install/.env.example > "${NGINX_WEBROOT}"/.env
     #chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env
     ##fi
 #
