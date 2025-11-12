@@ -27,10 +27,10 @@ services:
     restart: always
 
   laravel-db:
-    image: docker.io/tiredofit/mariadb:11.4
+    image: docker.io/nfrastack/mariadb:11.4
     container_name: laravel-db
     volumes:
-      - ./db/laravel/mariadb:/var/lib/mysql
+      - ./db/laravel/mariadb:/data
       - ./logs/mariadb:/logs
     environment:
       - TIMEZONE=America/Vancouver

@@ -122,15 +122,15 @@ laravel_volatile_setup() {
             fi
 
             if [ -s "${NGINX_WEBROOT}"/.env ]; then
-                if [ ! -s "${CONFIG_PATH}"/"${CONFIG_FILE}" ]; then
+                if [ ! -s "${CONFIG_PATH%/}"/"${CONFIG_FILE}" ]; then
                     print_info "Copying .env to Config Directory"
-                    cp "${NGINX_WEBROOT}"/.env "${CONFIG_PATH}"/"${CONFIG_FILE}"
+                    cp "${NGINX_WEBROOT}"/.env "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
                 else
                     print_warn "Config File already exists, skipping copy"
                 fi
             fi
             rm -rf "${NGINX_WEBROOT}"/.env
-            ln -sf "${CONFIG_PATH}"/"${CONFIG_FILE}" "${NGINX_WEBROOT}"/.env
+            ln -sf "${CONFIG_PATH%/}"/"${CONFIG_FILE}" "${NGINX_WEBROOT}"/.env
             chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${CONFIG_PATH}"
         ;;
         log )
