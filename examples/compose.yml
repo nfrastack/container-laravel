@@ -10,7 +10,7 @@ services:
       - traefik.http.services.laravel.loadbalancer.server.port=8000
     volumes:
       - ./data/:/www/html
-      - ./logs/:/www/logs
+      - ./logs/:/logs
     environment:
       - TIMEZONE=America/Vancouver
 
@@ -27,16 +27,13 @@ services:
     restart: always
 
   laravel-db:
-    image: docker.io/nfrastack/mariadb:11.4
+    image: docker.io/nfrastack/mariadb:11.8
     container_name: laravel-db
     volumes:
       - ./db/laravel/mariadb:/data
       - ./logs/mariadb:/logs
     environment:
       - TIMEZONE=America/Vancouver
-      - CONTAINER_NAME=laravel-db
-
-      - CONTAINER_ENABLE_MONITORING=FALSE
 
       - ROOT_PASS=root_password
 
@@ -54,9 +51,6 @@ services:
       - ./dbbackup:/backup
     environment:
       - TIMEZONE=America/Vancouver
-      - CONTAINER_NAME=laravel-db-backup
-
-      - CONTAINER_ENABLE_MONITORING=FALSE
 
       - DB01_HOST=laravel-db
       - DB01_TYPE=mariadb
