@@ -176,6 +176,11 @@ Activated when `LARAVEL_CONFIGURE_LARAVEL=TRUE`
 | `CACHE_DRIVER`     | Laravel Cache Driver                                                   | `file`                       |         |
 | `SESSION_DRIVER`   | Laravel Session Driver                                                 | `file`                       |         |
 | `SESSION_LIFETIME` | Laravel Session Lifetime in minutes                                    | `120`                        |         |
+
+### Logging Options
+
+Activated when `LARAL_CONFIGURE_LOGGING=TRUE`
+
 | `LOG_CHANNEL`      | Laravel Log Channel                                                    | `single`                     |         |
 | `LOG_LEVEL`        | Laravel Log Level                                                      | `info`                       |         |
 | `MEDIA_DISK`       | Laravel Media Disk Name                                                | `public`                     |         |
@@ -198,6 +203,7 @@ Activated when `LARAVEL_CONFIGURE_MAIL=TRUE`
 ### LDAP Options
 
 Activated when `LARAVEL_CONFIGURE_LDAP=TRUE`
+
 | Parameter         | Description                  | Default   | `_FILE` |
 | ----------------- | ---------------------------- | --------- | ------- |
 | `LDAP_HOST`       | LDAP Server Hostname         |           |         |

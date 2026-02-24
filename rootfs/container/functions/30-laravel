@@ -12,34 +12,38 @@ laravel_update_env() {
 }
 
 laravel_configure_db() {
-    print_debug "Updating DB Information"
-    ## MariaDB
-    update_env DB_DATABASE "${DB_NAME}"
-    update_env DB_HOST "${DB_HOST}"
-    update_env DB_PASSWORD "${DB_PASS}"
-    update_env DB_PORT "${DB_PORT}"
-    update_env DB_USERNAME "${DB_USER}"
+    if var_true "${LARAVEL_CONFIGURE_DB}" ; then
+        print_debug "Updating DB Information"
+        ## MariaDB
+        update_env DB_DATABASE "${DB_NAME}"
+        update_env DB_HOST "${DB_HOST}"
+        update_env DB_PASSWORD "${DB_PASS}"
+        update_env DB_PORT "${DB_PORT}"
+        update_env DB_USERNAME "${DB_USER}"
+    fi
 }
 
 laravel_configure_laravel() {
-    print_debug "Updating Laravel Information"
-    update_env APP_NAME "${APP_NAME}"
-    update_env APP_URL "${SITE_URL}"
-    update_env APP_ENV "${STAGE}"
-    update_env APP_DEBUG "${APP_DEBUG}"
-    update_env BROADCAST_DRIVER ${BROADCAST_DRIVER}
-    update_env CACHE_DRIVER ${CACHE_DRIVER}
-    update_env MEDIA_DISK "${MEDIA_DISK}"
-    create_folder \
-                    "${NGINX_WEBROOT%/}/public/${MEDIA_DISK},\ \
-                    ${NGINX_WEBROOT%/}/public/uploads/" \
-                    "${NGINX_USER}":"${NGINX_GROUP}" 775
-    update_env SESSION_DRIVER ${SESSION_DRIVER}
-    update_env SESSION_LIFETIME ${SESSION_LIFETIME}
+    if var_true "${LARAVEL_CONFIGURE_LARAVEL}" ; then
+        print_debug "Updating Laravel Information"
+        update_env APP_NAME "${APP_NAME}"
+        update_env APP_URL "${SITE_URL}"
+        update_env APP_ENV "${STAGE}"
+        update_env APP_DEBUG "${APP_DEBUG}"
+        update_env BROADCAST_DRIVER ${BROADCAST_DRIVER}
+        update_env CACHE_DRIVER ${CACHE_DRIVER}
+        update_env MEDIA_DISK "${MEDIA_DISK}"
+        create_folder \
+                        "${NGINX_WEBROOT%/}/public/${MEDIA_DISK},\ \
+                        ${NGINX_WEBROOT%/}/public/uploads/" \
+                        "${NGINX_USER}":"${NGINX_GROUP}" 775
+        update_env SESSION_DRIVER ${SESSION_DRIVER}
+        update_env SESSION_LIFETIME ${SESSION_LIFETIME}
+    fi
 }
 
 laravel_configure_mail() {
-    if var_true "${LARAVEL_ENABLE_MAIL}" ; then
+    if var_true "${LARAVEL_CONFIGURE_MAIL}" ; then
         print_debug "Updating Mail"
         update_env MAIL_ENCRYPTION "${SMTP_ENCRYPTION}"
         update_env MAIL_FROM_ADDRESS "${MAIL_FROM_ADDRESS}"
@@ -53,7 +57,7 @@ laravel_configure_mail() {
 }
 
 laravel_configure_ldap() {
-    if var_true "${LARAVEL_ENABLE_LDAP}" ; then
+    if var_true "${LARAVEL_CONFIGURE_LDAP}" ; then
         print_debug "Updating LDAP"
         sanity_var LDAP_HOST "LDAP Hostname"
         sanity_var LDAP_BASE_DN "LDAP Base DN"
@@ -74,23 +78,27 @@ laravel_configure_ldap() {
 }
 
 laravel_configure_logging() {
-    print_debug "Updating Logging"
-    if [ "${CONTAINER_LOG_LEVEL,,}" = "debug" ] ; then
-        LOG_LEVEL=debug
+    if var_true "${LARAVEL_CONFIGURE_LOGGING}" ; then
+        print_debug "Updating Logging"
+        if [ "${CONTAINER_LOG_LEVEL,,}" = "debug" ] ; then
+            LOG_LEVEL=debug
+        fi
+        update_env LOG_CHANNEL "${LOG_CHANNEL}"
+        update_env LOG_LEVEL "${LOG_LEVEL}"
     fi
-    update_env LOG_CHANNEL "${LOG_CHANNEL}"
-    update_env LOG_LEVEL "${LOG_LEVEL}"
 }
 
 laravel_configure_app_key() {
-    cd "${NGINX_WEBROOT}"
-    chown "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT%/}"/.env
-    if [ -n "${APP_KEY}" ] ; then
-        print_debug "Setting APP_KEY from Environment Variable"
-        update_env APP_KEY "${APP_KEY}"
-    else
-        print_debug "Generating APP_KEY"
-        silent sudo -u "${NGINX_USER}" php artisan key:generate --force
+    if var_true "${LARAVEL_CONFIGURE_APP_KEY}" ; then
+        cd "${NGINX_WEBROOT}"
+        chown "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT%/}"/.env
+        if [ -n "${APP_KEY}" ] ; then
+            print_debug "Setting APP_KEY from Environment Variable"
+            update_env APP_KEY "${APP_KEY}"
+        else
+            print_debug "Generating APP_KEY"
+            silent sudo -u "${NGINX_USER}" php artisan key:generate --force
+        fi
     fi
 }
 
