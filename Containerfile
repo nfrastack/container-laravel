@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
 #
 # SPDX-License-Identifier: MIT
 
@@ -22,20 +22,25 @@ COPY README.md /usr/src/container/README.md
 
 ENV \
     NGINX_SITE_ENABLED=laravel \
-    PHP_ENABLE_CREATE_SAMPLE_PHP=FALSE \
-    PHP_MODULE_ENABLE_CURL=TRUE \
-    PHP_MODULE_ENABLE_INTL=TRUE \
-    PHP_MODULE_ENABLE_LDAP=TRUE \
-    PHP_MODULE_ENABLE_OPENSSL=TRUE \
-    PHP_MODULE_ENABLE_PDO_SQLITE=TRUE \
-    PHP_MODULE_ENABLE_POSIX=TRUE \
-    PHP_MODULE_ENABLE_SIMPLEXML=TRUE \
-    PHP_MODULE_ENABLE_TOKENIZER=TRUE \
-    PHP_MODULE_ENABLE_ZIP=TRUE \
     IMAGE_NAME=nfrastack/laravel \
     IMAGE_REPO_URL=https://github.com/nfrastack/container-laravel
 
 RUN echo "" && \
+    BUILD_ENV=" \
+                10-nginx/WEBROOT_SUFFIX=/public \
+                10-nginx/NGINX_INDEX_FILE=index.php \
+                20-php-fpm/PHP_ENABLE_CREATE_SAMPLE_PHP=FALSE \
+                20-php-fpm/PHP_MODULE_ENABLE_CURL=TRUE \
+                20-php-fpm/PHP_MODULE_ENABLE_INTL=TRUE \
+                20-php-fpm/PHP_MODULE_ENABLE_LDAP=TRUE \
+                20-php-fpm/PHP_MODULE_ENABLE_OPENSSL=TRUE \
+                20-php-fpm/PHP_MODULE_ENABLE_PDO_SQLITE=TRUE \
+                20-php-fpm/PHP_MODULE_ENABLE_POSIX=TRUE \
+                20-php-fpm/PHP_MODULE_ENABLE_SIMPLEXML=TRUE \
+                20-php-fpm/PHP_MODULE_ENABLE_TOKENIZER=TRUE \
+                20-php-fpm/PHP_MODULE_ENABLE_ZIP=TRUE \
+              " \
+              && \
     LARAVEL_BUILD_DEPS_ALPINE=" \
                                " \
                                && \

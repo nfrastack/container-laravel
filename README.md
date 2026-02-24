@@ -107,10 +107,10 @@ The following directories/files should be mapped for persistent storage in order
 This image relies on a customized base image in order to work.
 Be sure to view the following repositories to understand all the customizable options:
 
-| Image                                                                | Description         |
-| -------------------------------------------------------------------- | ------------------- |
-| [OS Base](https://github.com/nfrastack/container-base/)              | Base Image          |
-| [Nginx](https://github.com/nfrastack/container-nginx/)               | Nginx Webserver     |
+| Image                                                                 | Description         |
+| --------------------------------------------------------------------- | ------------------- |
+| [OS Base](https://github.com/nfrastack/container-base/)               | Base Image          |
+| [Nginx](https://github.com/nfrastack/container-nginx/)                | Nginx Webserver     |
 | [Nginx PHP-FPM](https://github.com/nfrastack/container-nginx-php-fpm) | PHP-FPM Interpreter |
 
 Below is the complete list of available options that can be used to customize your installation.
@@ -120,27 +120,39 @@ Below is the complete list of available options that can be used to customize yo
 #### Core Configuration
 
 ### Operation Mode
-| Parameter                      | Description                                                                                                 | Default                 | `_FILE` |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------- | ----------------------- | ------- |
-| `SETUP_TYPE`                   | Automatically edit configuration after first bootup `AUTO` or `MANUAL`                                      | `AUTO`                  |         |
-| `DATA_PATH`                    | Base Data Path                                                                                              | `/data`                 |         |
-| `ENABLE_CONFIG_REDIRECTION`    | Enable Config File Redirection to Persistent Storage                                                        | `FALSE`                 |         |
-| `CONFIG_PATH`                  | Path to Configuration Directory                                                                             | `${DATA_PATH}/config/`  |         |
-| `CONFIG_FILE`                  | Configuration File Name                                                                                     | `config`                |         |
-| `ENABLE_LOG_REDIRECTION`       | Enable Log File Redirection to Persistent Storage                                                           | `FALSE`                 |         |
-| `LOG_PATH`                     | Logfile location                                                                                            | `/www/html/laravel`     |         |
-| `ENABLE_STORAGE_REDIRECTION`   | Enable Storage Directory Redirection to Persistent Storage                                                  | `FALSE`                 |         |
-| `STORAGE_PATH`                 | Path to Storage Directory                                                                                   | `${DATA_PATH}/storage/` |         |
+| Parameter                      | Description                                                                                             | Default                 | `_FILE` |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------- | ----------------------- | ------- |
+| `SETUP_TYPE`                   | Automatically edit configuration after first bootup `AUTO` or `MANUAL`                                  | `AUTO`                  |         |
+| `DATA_PATH`                    | Base Data Path                                                                                          | `/data`                 |         |
+| `ENABLE_CONFIG_REDIRECTION`    | Enable Config File Redirection to Persistent Storage                                                    | `FALSE`                 |         |
+| `CONFIG_PATH`                  | Path to Configuration Directory                                                                         | `${DATA_PATH}/config/`  |         |
+| `CONFIG_FILE`                  | Configuration File Name                                                                                 | `config`                |         |
+| `ENABLE_LOG_REDIRECTION`       | Enable Log File Redirection to Persistent Storage                                                       | `FALSE`                 |         |
+| `LOG_PATH`                     | Logfile location                                                                                        | `/www/html/laravel`     |         |
+| `ENABLE_STORAGE_REDIRECTION`   | Enable Storage Directory Redirection to Persistent Storage                                              | `FALSE`                 |         |
+| `STORAGE_PATH`                 | Path to Storage Directory                                                                               | `${DATA_PATH}/storage/` |         |
 | `LARAVEL_IMAGE_MODE`           | Laravel Image Mode - `production` or `development`. See [Image Mode Details](#image-mode-details) below | `development`           |         |
-| `ENABLE_LARAVEL_ARTISAN_SERVE` | Enable Laravel Artisan Serve (Development only - not suitable for production)                               | `TRUE`                  |         |
-| `ENABLE_LARAVEL_ENV_WATCHER`   | Enable Laravel Environment File Watcher                                                                     | `TRUE`                  |         |
-| `ENABLE_LARAVEL_NPM_RUN_DEV`   | Enable Laravel NPM Development Server                                                                       | `TRUE`                  |         |
-| `ENABLE_LARAVEL_WORKER`        | Enable Laravel Queue Worker                                                                                 | `FALSE`                 |         |
-| `ARTISAN_SERVE_LISTEN_IP`      | IP Address for Artisan Serve to Listen On                                                                   | `0.0.0.0`               |         |
-| `ARTISAN_SERVE_LISTEN_PORT`    | Port for Artisan Serve to Listen On                                                                         | `8000`                  |         |
+| `ENABLE_LARAVEL_ARTISAN_SERVE` | Enable Laravel Artisan Serve (Development only - not suitable for production)                           | `TRUE`                  |         |
+| `ENABLE_LARAVEL_ENV_WATCHER`   | Enable Laravel Environment File Watcher                                                                 | `TRUE`                  |         |
+| `ENABLE_LARAVEL_NPM_RUN_DEV`   | Enable Laravel NPM Development Server                                                                   | `TRUE`                  |         |
+| `ENABLE_LARAVEL_WORKER`        | Enable Laravel Queue Worker                                                                             | `FALSE`                 |         |
+| `ARTISAN_SERVE_LISTEN_IP`      | IP Address for Artisan Serve to Listen On                                                               | `0.0.0.0`               |         |
+| `ARTISAN_SERVE_LISTEN_PORT`    | Port for Artisan Serve to Listen On                                                                     | `8000`                  |         |
 
+### Auto Configuration
+| Parameter                   | Description                              | Default | `_FILE` |
+| --------------------------- | ---------------------------------------- | ------- | ------- |
+| `LARAVEL_CONFIGURE_APP_KEY` | Enable configure App Key Routines        | `FALSE` |         |
+| `LARAVEL_CONFIGURE_DB`      | Enable configure DB Routines             | `FALSE` |         |
+| `LARAVEL_CONFIGURE_LARAVEL` | Enable configuring base laravel routines | `FALSE` |         |
+| `LARAVEL_CONFIGURE_LDAP`    | Enable configuring LDAP routines         | `FALSE` |         |
+| `LARAVEL_CONFIGURE_LOGGING` | Enable configuring logging routines      | `FALSE` |         |
+| `LARAVEL_CONFIGURE_MAIL`    | Enable configuring mail routines         | `FALSE` |         |
 
-### Database Options (Future)
+### Database Options
+
+Activated when `LARAVEL_CONFIGURE_DB=TRUE`
+
 | Parameter | Description                                                       | Default | `_FILE` |
 | --------- | ----------------------------------------------------------------- | ------- | ------- |
 | `DB_TYPE` | Type of the Database. Currently supported are `mysql` and `pgsql` | `mysql` |         |
@@ -150,7 +162,9 @@ Below is the complete list of available options that can be used to customize yo
 | `DB_USER` | Username for above Database e.g. `laravel`                        |         | x       |
 | `DB_PASS` | Password for above Database e.g. `password`                       |         | x       |
 
-### Site Options (Future)
+### Site Options
+
+Activated when `LARAVEL_CONFIGURE_LARAVEL=TRUE`
 | Parameter        | Description               | Default | `_FILE` |
 | ---------------- | ------------------------- | ------- | ------- |
 | `DISPLAY_ERRORS` | Display Errors on Website | `FALSE` |         |
@@ -166,7 +180,10 @@ Below is the complete list of available options that can be used to customize yo
 | `LOG_LEVEL`        | Laravel Log Level                                                      | `info`                       |         |
 | `MEDIA_DISK`       | Laravel Media Disk Name                                                | `public`                     |         |
 
-### Mail Options (Future)
+### Mail Options
+
+Activated when `LARAVEL_CONFIGURE_MAIL=TRUE`
+
 | Parameter           | Description          | Default         | `_FILE` |
 | ------------------- | -------------------- | --------------- | ------- |
 | `MAIL_TYPE`         | Mail Type            | `smtp`          |         |
@@ -178,7 +195,9 @@ Below is the complete list of available options that can be used to customize yo
 | `SMTP_PASS`         | SMTP Password        | `null`          |         |
 | `SMTP_ENCRYPTION`   | SMTP Encryption Type | `null`          |         |
 
-### LDAP Options (Future)
+### LDAP Options
+
+Activated when `LARAVEL_CONFIGURE_LDAP=TRUE`
 | Parameter         | Description                  | Default   | `_FILE` |
 | ----------------- | ---------------------------- | --------- | ------- |
 | `LDAP_HOST`       | LDAP Server Hostname         |           |         |
@@ -211,7 +230,7 @@ Use `LARAVEL_IMAGE_MODE=development` only for:
 
 When set to `production`, the container is optimized for production workloads:
 
-- Web Server: Uses Nginx + PHP-FPM for robust, scalable web serving
+- Web Server: Uses Nginx + PHP-FPM
 - Performance: Disables development tools and debugging features
 - File Management: Enables persistent storage redirection for config, logs, and storage
 - Queue Processing: Enables Laravel Worker for background job processing
@@ -233,8 +252,8 @@ When set to `development` (default), the container is optimized for development 
 
 - Web Server: Can optionally use Laravel's built-in artisan serve for quick development
 - Development Tools: Enables hot reloading, NPM dev server, and debugging features
-- File Management: Keeps files local for faster development cycles
-- Queue Processing: Disabled by default (can be manually enabled)
+- File Management: Keeps files local
+- Queue Processing: Disabled by default and can be manually enabled
 
 **Automatically configured variables:**
 ```
@@ -252,13 +271,13 @@ ENABLE_STORAGE_REDIRECTION=FALSE      # Local storage files
 Laravel Artisan Serve Limitations:
 
 - Artisan serve is Laravel's built-in development server
-- It's single-threaded and not designed for production traffic
+- Single-threaded and not designed for production traffic
 - It lacks the performance, security, and stability features of proper web servers
 - Cannot handle concurrent requests effectively
 
 Production Benefits:
 - Nginx + PHP-FPM: Multi-process, multi-threaded architecture for handling concurrent requests
-- Performance: Optimized for high-traffic, production workloads
+- Performance: Optimized for high-traffic and production workloads
 - Security: Production-hardened web server configuration
 - Reliability: Better error handling and recovery mechanisms
 - Scalability: Can handle thousands of concurrent connections

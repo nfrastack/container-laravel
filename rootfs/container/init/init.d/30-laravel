@@ -1,5 +1,5 @@
 #!/command/with-contenv bash
-# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
 #
 # SPDX-License-Identifier: MIT
 
@@ -25,24 +25,23 @@ if var_true "${ENABLE_STORAGE_REDIRECTION}" ; then
     laravel_volatile_setup storage
 fi
 
-laravel_volatile_setup logs
+call laravel_volatile_setup logs
 
 if [ "${SETUP_TYPE,,}" = "auto" ]; then
     print_notice "Generating Configuration"
 
-    ##if [ ! -f "${NGINX_WEBROOT}/.env" ] ; then
-    #print_debug "Copying Example .env to .env"
-    #cat /container/data/laravel/install/.env.example > "${NGINX_WEBROOT}"/.env
-    #chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env
-    ##fi
-#
-    #laravel_configure_app_key
-    #laravel_configure_application
-    #laravel_configure_db
-    #laravel_configure_laravel
-    #laravel_configure_ldap
-    #laravel_configure_logging
-    #laravel_configure_mail
+    if [ ! -f "${NGINX_WEBROOT}/.env" ] ; then
+        print_debug "Copying Example .env to .env"
+        cat /container/data/laravel/install/.env.example | write_file "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env 660
+    fi
+
+    call laravel_configure_app_key
+    call laravel_configure_application
+    call laravel_configure_db
+    call laravel_configure_laravel
+    call laravel_configure_ldap
+    call laravel_configure_logging
+    call laravel_configure_mail
 fi
 
 if var_false "${ENABLE_LARAVEL_WORKER}" ; then
@@ -87,7 +86,6 @@ else
     fi
 fi
 
-## Cleanup
 if [ -f "${NGINX_WEBROOT}"/artisan ] ; then
     print_debug "Cleaning up Cache and Views"
     cd "${NGINX_WEBROOT}"/
@@ -99,6 +97,6 @@ cd "${NGINX_WEBROOT}"
 chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"
 chmod ug+rwx "${NGINX_WEBROOT}"
 
-laravel_update_bashrc
+call laravel_update_bashrc
 
 liftoff

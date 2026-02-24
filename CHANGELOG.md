@@ -1,7 +1,8 @@
 ## 1.0.0pre 2025-09-30 <dave at tiredofit dot ca>
 
    ### Changed
-      - Switch base image to nfrastack/nginx-php-fpm
+      - Switch base image to nfrastack/nginx-php-fpm:8.x
+      - Added LARAVEL_CONFIGURE_ statements
 
 ## 0.0.11 2025-06-07 <dave at tiredofit dot ca>
 
