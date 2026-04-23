@@ -213,7 +213,7 @@ laravel_setup_container_mode() {
 
 laravel_update_bashrc() {
     if check_container_restarted ; then
-        write_file /root/.bashrc<<EOF
+        write_file -a root:root@/root/.bashrc <<EOF
 artisan() {
     export oldpwd="\$(pwd)"
     cd ${NGINX_WEBROOT}
