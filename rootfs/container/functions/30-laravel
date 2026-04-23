@@ -112,7 +112,7 @@ laravel_setup_webroot() {
         cd "${NGINX_WEBROOT}"
 
         silent sudo -u "${NGINX_USER}" \
-                                composer create \
+                                composer create-project \
                                     laravel/laravel \
                                         "${NGINX_WEBROOT}" \
                                             --no-interaction \

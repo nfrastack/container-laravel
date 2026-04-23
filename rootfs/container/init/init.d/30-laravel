@@ -76,6 +76,7 @@ else
     else
         service_stop 10-nginx
         service_stop 11-nginx-config-reload
+        service_stop 20-php-fpm
     fi
 fi
 if var_false "${ENABLE_LARAVEL_NPM_RUN_DEV}" ; then
