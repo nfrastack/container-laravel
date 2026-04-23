@@ -108,9 +108,11 @@ laravel_setup_webroot() {
                                                     "${NGINX_WEBROOT}" \
                                                     /var/cache/nginx
 
+        transform_var file LARAVEL_GIT_REPO
         if [ -n "${LARAVEL_GIT_REPO}" ]; then
             print_notice "Cloning Application from Git Repository"
             _git_url="${LARAVEL_GIT_REPO}"
+            transform_var file LARAVEL_GIT_TOKEN
             if [ -n "${LARAVEL_GIT_TOKEN}" ]; then
                 _git_url=$(echo "${_git_url}" | sed "s|://|://${LARAVEL_GIT_TOKEN}@|")
             fi
@@ -137,6 +139,7 @@ laravel_setup_webroot() {
             if var_true "${LARAVEL_COMPOSER_SETUP}" ; then
                 cd "${NGINX_WEBROOT}"
                 print_info "Running Composer Install"
+                transform_var file LARAVEL_COMPOSER_AUTH
                 if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then
                     print_debug "Using provided Composer authentication"
                     silent sudo -u "${NGINX_USER}" \
