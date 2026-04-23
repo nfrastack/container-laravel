@@ -205,7 +205,6 @@ laravel_setup_container_mode() {
                 ENABLE_CONFIG_REDIRECTION=FALSE
                 ENABLE_LOG_REDIRECTION=FALSE
                 ENABLE_STORAGE_REDIRECTION=FALSE
-
             ;;
         esac
     done
