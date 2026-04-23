@@ -185,6 +185,32 @@ laravel_setup_webroot() {
                 fi
             fi
 
+            if var_true "${LARAVEL_COMPOSER_SETUP}" ; then
+                cd "${NGINX_WEBROOT}"
+                if grep -qi "DB_CONNECTION=sqlite" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+                    _db_path=$(grep -i "^DB_DATABASE=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+                    if [ -n "${_db_path}" ] && [ "${_db_path}" != ":memory:" ]; then
+                        case "${_db_path}" in
+                            /*) ;; # absolute path, use as-is
+                            *)  _db_path="${NGINX_WEBROOT%/}/${_db_path}" ;;
+                        esac
+                        if [ ! -f "${_db_path}" ]; then
+                            print_info "Creating SQLite database at '${_db_path}'"
+                            sudo -u "${NGINX_USER}" touch "${_db_path}"
+                        fi
+                    fi
+                fi
+
+                print_info "Running database migrations"
+                silent sudo -u "${NGINX_USER}" php artisan migrate --force
+                _exit_code=$?
+                if [ "${_exit_code}" -ne 0 ]; then
+                    print_error "Database migration failed (exit code ${_exit_code}) — retrying with output visible"
+                    sudo -u "${NGINX_USER}" php artisan migrate --force
+                    exit 1
+                fi
+            fi
+
             if var_true "${LARAVEL_NPM_SETUP}" ; then
                 print_info "Installing Node dependencies"
                 cd "${NGINX_WEBROOT}"
