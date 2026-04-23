@@ -55,8 +55,8 @@ RUN echo "" && \
                             " \
                             && \
     LARAVEL_BUILD_DEPS_ALPINE=" \
-                               " \
-                               && \
+                              " \
+                              && \
     LARAVEL_RUN_DEPS_ALPINE=" \
                                 jpegoptim \
                                 nodejs \
