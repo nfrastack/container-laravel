@@ -1,0 +1,18 @@
+#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
+
+source /container/base/functions/container/init
+prepare_service
+
+SERVICE_NAME="laravel-nginx-preloader"
+
+if [ "${LARAVEL_IMAGE_MODE,,}" = "development" ]; then
+    _container_build_env    " \
+                                10-nginx/ENABLE_NGINX=FALSE \
+                            "
+                            #20-php-fpm/ENABLE_PHPFPM=FALSE \
+fi
+
+liftoff
