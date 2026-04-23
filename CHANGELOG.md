@@ -1,4 +1,4 @@
-## 1.0.0pre 2025-09-30 <dave at tiredofit dot ca>
+## 20260422-1.0.0pre 2025-09-30 <dave at tiredofit dot ca>
 
 
    ### Changed
