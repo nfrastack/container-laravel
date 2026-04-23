@@ -222,15 +222,13 @@ laravel_setup_webroot() {
                     exit 1
                 fi
 
-                if [ "${LARAVEL_IMAGE_MODE,,}" != "development" ]; then
-                    print_info "Building frontend assets"
-                    silent sudo -u "${NGINX_USER}" npm run build
-                    _exit_code=$?
-                    if [ "${_exit_code}" -ne 0 ]; then
-                        print_error "npm run build failed (exit code ${_exit_code}) — retrying with output visible"
-                        sudo -u "${NGINX_USER}" npm run build
-                        exit 1
-                    fi
+                print_info "Building frontend assets"
+                silent sudo -u "${NGINX_USER}" npm run build
+                _exit_code=$?
+                if [ "${_exit_code}" -ne 0 ]; then
+                    print_error "npm run build failed (exit code ${_exit_code}) — retrying with output visible"
+                    sudo -u "${NGINX_USER}" npm run build
+                    exit 1
                 fi
             fi
         else

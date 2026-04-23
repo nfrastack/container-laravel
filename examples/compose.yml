@@ -20,7 +20,7 @@ services:
       - ENABLE_LARAVEL_ENV_WATCHER=TRUE
       - ENABLE_LARAVEL_NPM_WATCHER=TRUE
       - ENABLE_LARAVEL_ARTISAN_SERVE=TRUE
-      - ENABLE_LARAVEL_NPM_RUN_DEV=TRUE
+      - ENABLE_LARAVEL_NPM_RUN_DEV=FALSE
     networks:
       - services
       - proxy
