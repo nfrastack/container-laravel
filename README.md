@@ -136,6 +136,7 @@ Below is the complete list of available options that can be used to customize yo
 | `ENABLE_LARAVEL_ARTISAN_SERVE` | Enable Laravel Artisan Serve (Development only - not suitable for production)                           | `TRUE`                  |         |
 | `ENABLE_LARAVEL_ENV_WATCHER`   | Enable Laravel Environment File Watcher                                                                 | `TRUE`                  |         |
 | `ENABLE_LARAVEL_NPM_RUN_DEV`   | Enable Laravel NPM Development Server                                                                   | `TRUE`                  |         |
+| `ENABLE_LARAVEL_VITE_HMR`     | Enable Vite HMR for remote development. See [Vite HMR](#vite-hmr-remote-development) section            | `FALSE`                 |         |
 | `ENABLE_LARAVEL_WORKER`        | Enable Laravel Queue Worker                                                                             | `FALSE`                 |         |
 | `ARTISAN_SERVE_LISTEN_IP`      | IP Address for Artisan Serve to Listen On                                                               | `0.0.0.0`               |         |
 | `ARTISAN_SERVE_LISTEN_PORT`    | Port for Artisan Serve to Listen On                                                                     | `8000`                  |         |
@@ -150,7 +151,34 @@ When `LARAVEL_GIT_REPO` is set, the container will clone the specified repositor
 | `LARAVEL_GIT_TOKEN`     | Authentication token injected into the Git clone URL for private repositories                       |         | x       |
 | `LARAVEL_COMPOSER_AUTH`  | JSON string passed as `COMPOSER_AUTH` for private package authentication (see [Composer docs](https://getcomposer.org/doc/articles/authentication-for-private-packages.md)) |         | x       |
 | `LARAVEL_COMPOSER_SETUP` | Run `composer install` after cloning                                                               | `TRUE`  |         |
-| `LARAVEL_NPM_SETUP`     | Run `npm install` (and `npm run build` in production mode) after cloning                           | `TRUE`  |         |
+| `LARAVEL_NPM_SETUP`     | Run `npm install` and `npm run build` after cloning                                                | `TRUE`  |         |
+
+### Vite HMR (Remote Development)
+
+When developing remotely (e.g. via VS Code Remote into a container behind a reverse proxy), Vite's Hot Module Replacement needs to know the external hostname so the browser can connect back to the Vite dev server.
+
+When `ENABLE_LARAVEL_VITE_HMR` is `TRUE`, the container reads `APP_URL` from `.env`, extracts the hostname, and writes `VITE_HMR_HOST` into `.env`. Your `vite.config.js` should read this value to configure HMR:
+
+```js
+server: {
+    host: '0.0.0.0',
+    hmr: process.env.VITE_HMR_HOST
+        ? { host: process.env.VITE_HMR_HOST, protocol: 'wss', clientPort: 443 }
+        : undefined,
+}
+```
+
+You will also need to add reverse proxy rules to route Vite traffic to port `5173`. For Traefik:
+
+```yaml
+labels:
+  - traefik.http.routers.myapp-vite.rule=Host(`myapp.example.com`) && PathPrefix(`/@vite`, `/@fs`, `/resources`, `/node_modules`)
+  - traefik.http.services.myapp-vite.loadbalancer.server.port=5173
+```
+
+| Parameter                  | Description                                                                     | Default | `_FILE` |
+| -------------------------- | ------------------------------------------------------------------------------- | ------- | ------- |
+| `ENABLE_LARAVEL_VITE_HMR`  | Extract hostname from `APP_URL` and write `VITE_HMR_HOST` to `.env` for Vite HMR | `FALSE` |         |
 
 ### Auto Configuration
 | Parameter                   | Description                              | Default | `_FILE` |

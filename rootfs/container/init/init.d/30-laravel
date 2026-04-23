@@ -44,6 +44,8 @@ if [ "${SETUP_TYPE,,}" = "auto" ]; then
     call laravel_configure_mail
 fi
 
+call laravel_configure_vite_hmr
+
 if var_false "${ENABLE_LARAVEL_WORKER}" ; then
     service_stop 30-laravel-worker
 else

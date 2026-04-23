@@ -102,6 +102,30 @@ laravel_configure_app_key() {
     fi
 }
 
+laravel_configure_vite_hmr() {
+    if var_true "${ENABLE_LARAVEL_VITE_HMR}" ; then
+        if [ -f "${NGINX_WEBROOT%/}"/.env ]; then
+            _app_url=$(grep -i "^APP_URL=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null | cut -d'=' -f2 | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs)
+            if [ -n "${_app_url}" ]; then
+                _hmr_host=$(echo "${_app_url}" | sed -n 's|https\?://\([^:/]*\).*|\1|p')
+                if [ -n "${_hmr_host}" ]; then
+                    print_info "Configuring Vite HMR for remote development (host: ${_hmr_host})"
+                    if grep -qi "^VITE_HMR_HOST=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+                        sed -i --follow-symlinks "s|^VITE_HMR_HOST=.*|VITE_HMR_HOST=${_hmr_host}|" "${NGINX_WEBROOT%/}"/.env
+                    else
+                        echo "VITE_HMR_HOST=${_hmr_host}" >> "${NGINX_WEBROOT%/}"/.env
+                    fi
+                fi
+            fi
+        fi
+    else
+        if grep -qi "^VITE_HMR_HOST=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+            print_debug "Removing Vite HMR configuration"
+            sed -i --follow-symlinks "/^VITE_HMR_HOST=/d" "${NGINX_WEBROOT%/}"/.env
+        fi
+    fi
+}
+
 laravel_setup_webroot() {
     if [ ! -f "${NGINX_WEBROOT}/artisan" ]; then
         chown -R "${NGINX_USER}":"${NGINX_GROUP}" \
