@@ -188,7 +188,7 @@ laravel_setup_webroot() {
             if var_true "${LARAVEL_COMPOSER_SETUP}" ; then
                 cd "${NGINX_WEBROOT}"
                 if grep -qi "DB_CONNECTION=sqlite" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
-                    _db_path=$(grep -i "^DB_DATABASE=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+                    _db_path=$(grep -i "^DB_DATABASE=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null | cut -d'=' -f2 | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs)
                     if [ -n "${_db_path}" ] && [ "${_db_path}" != ":memory:" ]; then
                         case "${_db_path}" in
                             /*) ;; # absolute path, use as-is
