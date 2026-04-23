@@ -104,26 +104,83 @@ laravel_configure_app_key() {
 
 laravel_setup_webroot() {
     if [ ! -f "${NGINX_WEBROOT}/artisan" ]; then
-        print_warn "Potential New Installation / Standalone Laravel Application detected"
         chown -R "${NGINX_USER}":"${NGINX_GROUP}" \
                                                     "${NGINX_WEBROOT}" \
                                                     /var/cache/nginx
-        print_info "Installing Base Laravel Application"
-        cd "${NGINX_WEBROOT}"
 
-        silent sudo -u "${NGINX_USER}" \
-                                composer create-project \
-                                    laravel/laravel \
-                                        "${NGINX_WEBROOT}" \
-                                            --no-interaction \
-                                            --no-progress \
-                                            --no-scripts \
-                                            --prefer-dist
+        if [ -n "${LARAVEL_GIT_REPO}" ]; then
+            print_notice "Cloning Application from Git Repository"
+            _git_url="${LARAVEL_GIT_REPO}"
+            if [ -n "${LARAVEL_GIT_TOKEN}" ]; then
+                _git_url=$(echo "${_git_url}" | sed "s|://|://${LARAVEL_GIT_TOKEN}@|")
+            fi
 
-        print_info "Installing Node dependencies"
-        silent sudo -u "${NGINX_USER}" \
-                                         npm \
-                                            install
+            silent sudo -u "${NGINX_USER}" \
+                                    git clone \
+                                        --branch "${LARAVEL_GIT_BRANCH}" \
+                                        --single-branch \
+                                        --depth 1 \
+                                        "${_git_url}" \
+                                        "${NGINX_WEBROOT%/}"/tmp-clone
+
+            shopt -s dotglob
+            mv "${NGINX_WEBROOT%/}"/tmp-clone/* "${NGINX_WEBROOT%/}"/
+            shopt -u dotglob
+            rm -rf "${NGINX_WEBROOT%/}"/tmp-clone
+
+            if [ ! -f "${NGINX_WEBROOT%/}"/.env ] && [ -f "${NGINX_WEBROOT%/}"/.env.example ]; then
+                print_debug "Copying .env.example to .env"
+                cp "${NGINX_WEBROOT%/}"/.env.example "${NGINX_WEBROOT%/}"/.env
+                chown "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT%/}"/.env
+            fi
+
+            if var_true "${LARAVEL_COMPOSER_SETUP}" ; then
+                cd "${NGINX_WEBROOT}"
+                print_info "Running Composer Install"
+                if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then
+                    print_debug "Using provided Composer authentication"
+                    silent sudo -u "${NGINX_USER}" \
+                                            COMPOSER_AUTH="${LARAVEL_COMPOSER_AUTH}" \
+                                            composer install \
+                                                --no-interaction \
+                                                --no-progress
+                else
+                    silent sudo -u "${NGINX_USER}" \
+                                            composer install \
+                                                --no-interaction \
+                                                --no-progress
+                fi
+            fi
+
+            if var_true "${LARAVEL_NPM_SETUP}" ; then
+                print_info "Installing Node dependencies"
+                cd "${NGINX_WEBROOT}"
+                silent sudo -u "${NGINX_USER}" npm install
+
+                if [ "${LARAVEL_IMAGE_MODE,,}" != "development" ]; then
+                    print_info "Building frontend assets"
+                    silent sudo -u "${NGINX_USER}" npm run build
+                fi
+            fi
+        else
+            print_warn "Potential New Installation / Standalone Laravel Application detected"
+            print_info "Installing Base Laravel Application"
+            cd "${NGINX_WEBROOT}"
+
+            silent sudo -u "${NGINX_USER}" \
+                                    composer create-project \
+                                        laravel/laravel \
+                                            "${NGINX_WEBROOT}" \
+                                                --no-interaction \
+                                                --no-progress \
+                                                --no-scripts \
+                                                --prefer-dist
+
+            print_info "Installing Node dependencies"
+            silent sudo -u "${NGINX_USER}" \
+                                             npm \
+                                                install
+        fi
     fi
 
     if [ ! -f "${NGINX_WEBROOT%/}"/.gitignore ] ; then

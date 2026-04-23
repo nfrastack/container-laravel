@@ -140,6 +140,18 @@ Below is the complete list of available options that can be used to customize yo
 | `ARTISAN_SERVE_LISTEN_IP`      | IP Address for Artisan Serve to Listen On                                                               | `0.0.0.0`               |         |
 | `ARTISAN_SERVE_LISTEN_PORT`    | Port for Artisan Serve to Listen On                                                                     | `8000`                  |         |
 
+### Git Repository Clone
+When `LARAVEL_GIT_REPO` is set, the container will clone the specified repository instead of creating a fresh Laravel project. This is useful for deploying existing applications from Git.
+
+| Parameter                | Description                                                                                        | Default | `_FILE` |
+| ------------------------ | -------------------------------------------------------------------------------------------------- | ------- | ------- |
+| `LARAVEL_GIT_REPO`      | Git URL to clone on first boot (e.g. `https://git.example.com/org/app`). Leave empty for default   |         | x       |
+| `LARAVEL_GIT_BRANCH`    | Branch to checkout                                                                                 | `main`  |         |
+| `LARAVEL_GIT_TOKEN`     | Authentication token injected into the Git clone URL for private repositories                       |         | x       |
+| `LARAVEL_COMPOSER_AUTH`  | JSON string passed as `COMPOSER_AUTH` for private package authentication (see [Composer docs](https://getcomposer.org/doc/articles/authentication-for-private-packages.md)) |         | x       |
+| `LARAVEL_COMPOSER_SETUP` | Run `composer install` after cloning                                                               | `TRUE`  |         |
+| `LARAVEL_NPM_SETUP`     | Run `npm install` (and `npm run build` in production mode) after cloning                           | `TRUE`  |         |
+
 ### Auto Configuration
 | Parameter                   | Description                              | Default | `_FILE` |
 | --------------------------- | ---------------------------------------- | ------- | ------- |
