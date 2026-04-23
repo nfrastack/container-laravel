@@ -20,6 +20,9 @@ COPY CHANGELOG.md /usr/src/container/CHANGELOG.md
 COPY LICENSE /usr/src/container/LICENSE
 COPY README.md /usr/src/container/README.md
 
+ARG \
+    NODE_VERSION=24
+
 ENV \
     NGINX_SITE_ENABLED=laravel \
     IMAGE_NAME=nfrastack/laravel \
@@ -41,6 +44,16 @@ RUN echo "" && \
                 20-php-fpm/PHP_MODULE_ENABLE_ZIP=TRUE \
               " \
               && \
+    LARAVEL_BUILD_DEPS_DEBIAN=" \
+                              " \
+                              && \
+    LARAVEL_RUN_DEPS_DEBIAN=" \
+                                jpegoptim \
+                                nodejs \
+                                optipng \
+                                pngquant \
+                            " \
+                            && \
     LARAVEL_BUILD_DEPS_ALPINE=" \
                                " \
                                && \
@@ -55,6 +68,7 @@ RUN echo "" && \
                             && \
     source /container/base/functions/container/build && \
     container_build_log image && \
+    package repo add node ${NODE_VERSION} && \
     package update && \
     package upgrade && \
     package install \
