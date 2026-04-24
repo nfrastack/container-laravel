@@ -13,6 +13,14 @@ liftoff
 
 print_start "Starting npm run dev"
 cd "${NGINX_WEBROOT}"
-sudo -u "${NGINX_USER}" npm \
-                                run \
-                                    dev
+
+_hmr_host="${VITE_HMR_HOST:-}"
+if [ -z "${_hmr_host}" ] && [ -f "${NGINX_WEBROOT%/}"/.env ]; then
+    _hmr_host=$(grep -i "^VITE_HMR_HOST=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null | cut -d'=' -f2 | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs)
+fi
+
+if [ -n "${_hmr_host}" ]; then
+    sudo -u "${NGINX_USER}" VITE_HMR_HOST="${_hmr_host}" npm run dev
+else
+    sudo -u "${NGINX_USER}" npm run dev
+fi
