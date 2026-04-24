@@ -175,6 +175,23 @@ laravel_setup_webroot() {
 
             if var_true "${LARAVEL_COMPOSER_SETUP}" ; then
                 cd "${NGINX_WEBROOT}"
+                if [ -f "${NGINX_WEBROOT%/}"/composer.json ]; then
+                    _path_repos=$(php -r '
+                        $f = $argv[1];
+                        $j = json_decode(file_get_contents($f), true);
+                        if (isset($j["repositories"])) {
+                            $before = count($j["repositories"]);
+                            $j["repositories"] = array_values(array_filter($j["repositories"], fn($r) => ($r["type"] ?? "") !== "path"));
+                            if (count($j["repositories"]) < $before) {
+                                file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+                                echo "removed";
+                            }
+                        }
+                    ' "${NGINX_WEBROOT%/}"/composer.json)
+                    if [ "${_path_repos}" = "removed" ]; then
+                        print_debug "Stripped local path repositories from composer.json"
+                    fi
+                fi
                 print_info "Running Composer Install"
                 transform_var file LARAVEL_COMPOSER_AUTH
                 if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then

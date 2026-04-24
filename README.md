@@ -172,7 +172,11 @@ You will also need to add reverse proxy rules to route Vite traffic to port `517
 
 ```yaml
 labels:
+  # Explicitly link the app router to its service (required when multiple services exist)
+  - traefik.http.routers.myapp.service=myapp
+  # Vite HMR
   - traefik.http.routers.myapp-vite.rule=Host(`myapp.example.com`) && PathPrefix(`/@vite`, `/@fs`, `/resources`, `/node_modules`)
+  - traefik.http.routers.myapp-vite.service=myapp-vite
   - traefik.http.services.myapp-vite.loadbalancer.server.port=5173
 ```
 
