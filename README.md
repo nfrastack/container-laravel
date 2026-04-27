@@ -152,21 +152,21 @@ When `LARAVEL_GIT_REPO` is set, the container will clone the specified repositor
 | `LARAVEL_COMPOSER_AUTH`  | JSON string passed as `COMPOSER_AUTH` for private package authentication (see [Composer docs](https://getcomposer.org/doc/articles/authentication-for-private-packages.md)) |         | x       |
 | `LARAVEL_COMPOSER_SETUP` | Run `composer install` after cloning                                                               | `TRUE`  |         |
 | `LARAVEL_NPM_SETUP`     | Run `npm install` and `npm run build` after cloning                                                | `TRUE`  |         |
+| `LARAVEL_ADMIN_EMAIL`   | Optional. If set with `LARAVEL_ADMIN_PASSWORD`, runs the `bamboo:setup` artisan command after migrations to create an admin user. Silently skipped if the command is not available in the cloned app. |         | x       |
+| `LARAVEL_ADMIN_PASSWORD` | Password for the admin user                                                                       |         | x       |
+| `LARAVEL_ADMIN_NAME`    | Display name for the admin user                                                                    | `Admin` |         |
 
 ### Vite HMR (Remote Development)
 
 When developing remotely (e.g. via VS Code Remote into a container behind a reverse proxy), Vite's Hot Module Replacement needs to know the external hostname so the browser can connect back to the Vite dev server.
 
-When `ENABLE_LARAVEL_VITE_HMR` is `TRUE`, the container reads `APP_URL` from `.env`, extracts the hostname, and writes `VITE_HMR_HOST` into `.env`. Your `vite.config.js` should read this value to configure HMR:
+When `ENABLE_LARAVEL_VITE_HMR` is `TRUE`, the container automatically:
 
-```js
-server: {
-    host: '0.0.0.0',
-    hmr: process.env.VITE_HMR_HOST
-        ? { host: process.env.VITE_HMR_HOST, protocol: 'wss', clientPort: 443 }
-        : undefined,
-}
-```
+1. Extracts the hostname from `APP_URL` in `.env` (or uses the `VITE_HMR_HOST` env var if set directly)
+2. Writes `VITE_HMR_HOST` into `.env`
+3. Patches `vite.config.js` to add remote HMR configuration (if not already present) — sets `host: '0.0.0.0'`, configures `wss` protocol, and uses `/@vite/hmr` as the websocket path for clean reverse proxy routing
+
+No changes to your application code are required — the container handles everything.
 
 You will also need to add reverse proxy rules to route Vite traffic to port `5173`. For Traefik:
 
