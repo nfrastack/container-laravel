@@ -149,7 +149,7 @@ When `LARAVEL_GIT_REPO` is set, the container will clone the specified repositor
 | `LARAVEL_GIT_REPO`      | Git URL to clone on first boot (e.g. `https://git.example.com/org/app`). Leave empty for default   |         | x       |
 | `LARAVEL_GIT_BRANCH`    | Branch to checkout                                                                                 | `main`  |         |
 | `LARAVEL_GIT_TOKEN`     | Authentication token injected into the Git clone URL for private repositories                       |         | x       |
-| `LARAVEL_COMPOSER_AUTH`  | JSON string passed as `COMPOSER_AUTH` for private package authentication (see [Composer docs](https://getcomposer.org/doc/articles/authentication-for-private-packages.md)) |         | x       |
+| `LARAVEL_COMPOSER_AUTH`  | JSON string passed as `COMPOSER_AUTH` for private package authentication (see [Composer docs](https://getcomposer.org/doc/articles/authentication-for-private-packages.md)). Persisted to `${NGINX_USER}`'s `.bashrc` so interactive `composer update` runs inside the container also pick it up. |         | x       |
 | `LARAVEL_COMPOSER_SETUP` | Run `composer install` after cloning                                                               | `TRUE`  |         |
 | `LARAVEL_NPM_SETUP`     | Run `npm install` and `npm run build` after cloning                                                | `TRUE`  |         |
 | `LARAVEL_ADMIN_EMAIL`   | Optional. If set with `LARAVEL_ADMIN_PASSWORD`, runs the `bamboo:setup` artisan command after migrations to create an admin user. Silently skipped if the command is not available in the cloned app. |         | x       |

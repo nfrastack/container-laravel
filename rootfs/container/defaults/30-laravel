@@ -3,6 +3,17 @@
 # SPDX-License-Identifier: MIT
 
 DATA_PATH=${DATA_PATH:-"/data"}
+
+# Capture which mode-affected flags the operator set explicitly (in compose
+# or shell) so laravel_setup_container_mode() doesn't overwrite their choices
+# with mode defaults. Must run BEFORE the defaults below assign fallback values.
+ENABLE_LARAVEL_ARTISAN_SERVE_USER_SET=${ENABLE_LARAVEL_ARTISAN_SERVE+1}
+ENABLE_LARAVEL_ENV_WATCHER_USER_SET=${ENABLE_LARAVEL_ENV_WATCHER+1}
+ENABLE_LARAVEL_NPM_RUN_DEV_USER_SET=${ENABLE_LARAVEL_NPM_RUN_DEV+1}
+ENABLE_LARAVEL_WORKER_USER_SET=${ENABLE_LARAVEL_WORKER+1}
+ENABLE_CONFIG_REDIRECTION_USER_SET=${ENABLE_CONFIG_REDIRECTION+1}
+ENABLE_LOG_REDIRECTION_USER_SET=${ENABLE_LOG_REDIRECTION+1}
+ENABLE_STORAGE_REDIRECTION_USER_SET=${ENABLE_STORAGE_REDIRECTION+1}
 #
 
 if [ "${STAGE,,}" = "develop" ] ; then

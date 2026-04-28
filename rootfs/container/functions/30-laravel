@@ -210,23 +210,7 @@ laravel_setup_webroot() {
 
             if var_true "${LARAVEL_COMPOSER_SETUP}" ; then
                 cd "${NGINX_WEBROOT}"
-                if [ -f "${NGINX_WEBROOT%/}"/composer.json ]; then
-                    _path_repos=$(php -r '
-                        $f = $argv[1];
-                        $j = json_decode(file_get_contents($f), true);
-                        if (isset($j["repositories"])) {
-                            $before = count($j["repositories"]);
-                            $j["repositories"] = array_values(array_filter($j["repositories"], fn($r) => ($r["type"] ?? "") !== "path"));
-                            if (count($j["repositories"]) < $before) {
-                                file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
-                                echo "removed";
-                            }
-                        }
-                    ' "${NGINX_WEBROOT%/}"/composer.json)
-                    if [ "${_path_repos}" = "removed" ]; then
-                        print_debug "Stripped local path repositories from composer.json"
-                    fi
-                fi
+                laravel_strip_path_repos
                 print_info "Running Composer Install"
                 transform_var file LARAVEL_COMPOSER_AUTH
                 if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then
@@ -410,30 +394,82 @@ laravel_volatile_setup() {
     esac
 }
 
+laravel_strip_path_repos() {
+    # Remove `type: path` Composer repositories from composer.json. Path
+    # repos exist for local development on the maintainer's workstation
+    # and never resolve inside the container, so any Composer command
+    # would error with "url supplied for the path ... does not exist".
+    # Idempotent — only rewrites the file when something actually changed.
+    if [ ! -f "${NGINX_WEBROOT%/}"/composer.json ]; then
+        return
+    fi
+    _result=$(php -r '
+        $f = $argv[1];
+        $j = json_decode(file_get_contents($f), true);
+        if (isset($j["repositories"]) && is_array($j["repositories"])) {
+            $before = count($j["repositories"]);
+            $j["repositories"] = array_values(array_filter($j["repositories"], fn($r) => ($r["type"] ?? "") !== "path"));
+            if (count($j["repositories"]) < $before) {
+                file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+                echo "removed";
+            }
+        }
+    ' "${NGINX_WEBROOT%/}"/composer.json 2>/dev/null)
+    if [ "${_result}" = "removed" ]; then
+        print_debug "Stripped local path repositories from composer.json"
+    fi
+}
+
+laravel_export_composer_auth() {
+    # Persist LARAVEL_COMPOSER_AUTH into the nginx user's environment so
+    # interactive `composer update` runs from inside the container can
+    # auth against private VCS repos without re-passing the credentials.
+    transform_var file LARAVEL_COMPOSER_AUTH
+    if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then
+        _bashrc=$(getent passwd "${NGINX_USER}" | cut -d: -f6)/.bashrc
+        if [ -n "${_bashrc}" ]; then
+            mkdir -p "$(dirname "${_bashrc}")"
+            touch "${_bashrc}"
+            sed -i "/^export COMPOSER_AUTH=/d" "${_bashrc}" 2>/dev/null
+            echo "export COMPOSER_AUTH='${LARAVEL_COMPOSER_AUTH}'" >> "${_bashrc}"
+            chown "${NGINX_USER}":"${NGINX_GROUP}" "${_bashrc}" 2>/dev/null
+        fi
+        # Also export to the current init shell so any composer commands
+        # the container itself runs (post-install hooks, scheduled tasks)
+        # inherit the auth.
+        export COMPOSER_AUTH="${LARAVEL_COMPOSER_AUTH}"
+    fi
+}
+
 laravel_setup_container_mode() {
+    # User-set values are respected — only fill in mode-specific defaults the
+    # operator didn't explicitly choose. The *_USER_SET flags are captured at
+    # the top of /container/defaults/30-laravel BEFORE defaults are applied.
     modes=$(echo "${LARAVEL_IMAGE_MODE}" | tr "," "\n")
     for mode in $modes; do
         case "${mode,,}" in
             prod* )
                 print_info "Laravel Image: Production Mode"
-                ENABLE_LARAVEL_ARTISAN_SERVE=FALSE
-                ENABLE_LARAVEL_ENV_WATCHER=TRUE
-                ENABLE_LARAVEL_NPM_RUN_DEV=FALSE
-                ENABLE_LARAVEL_WORKER=TRUE
-                ENABLE_CONFIG_REDIRECTION=TRUE
-                ENABLE_LOG_REDIRECTION=TRUE
-                ENABLE_STORAGE_REDIRECTION=TRUE
+                [ -z "${ENABLE_LARAVEL_ARTISAN_SERVE_USER_SET}" ] && ENABLE_LARAVEL_ARTISAN_SERVE=FALSE
+                [ -z "${ENABLE_LARAVEL_ENV_WATCHER_USER_SET}" ]   && ENABLE_LARAVEL_ENV_WATCHER=TRUE
+                [ -z "${ENABLE_LARAVEL_NPM_RUN_DEV_USER_SET}" ]   && ENABLE_LARAVEL_NPM_RUN_DEV=FALSE
+                [ -z "${ENABLE_LARAVEL_WORKER_USER_SET}" ]        && ENABLE_LARAVEL_WORKER=TRUE
+                [ -z "${ENABLE_CONFIG_REDIRECTION_USER_SET}" ]    && ENABLE_CONFIG_REDIRECTION=TRUE
+                [ -z "${ENABLE_LOG_REDIRECTION_USER_SET}" ]       && ENABLE_LOG_REDIRECTION=TRUE
+                [ -z "${ENABLE_STORAGE_REDIRECTION_USER_SET}" ]   && ENABLE_STORAGE_REDIRECTION=TRUE
             ;;
             develop* | * )
                 print_info "Laravel Image: Development Mode"
-                ENABLE_LARAVEL_ARTISAN_SERVE=TRUE
-                ENABLE_LARAVEL_ENV_WATCHER=TRUE
-                ENABLE_LARAVEL_NPM_RUN_DEV=TRUE
-                print_info "Consider ENABLE_LARAVEL_WORKER=TRUE for queue processing"
-                ENABLE_LARAVEL_WORKER=FALSE
-                ENABLE_CONFIG_REDIRECTION=FALSE
-                ENABLE_LOG_REDIRECTION=FALSE
-                ENABLE_STORAGE_REDIRECTION=FALSE
+                [ -z "${ENABLE_LARAVEL_ARTISAN_SERVE_USER_SET}" ] && ENABLE_LARAVEL_ARTISAN_SERVE=TRUE
+                [ -z "${ENABLE_LARAVEL_ENV_WATCHER_USER_SET}" ]   && ENABLE_LARAVEL_ENV_WATCHER=TRUE
+                [ -z "${ENABLE_LARAVEL_NPM_RUN_DEV_USER_SET}" ]   && ENABLE_LARAVEL_NPM_RUN_DEV=TRUE
+                if [ -z "${ENABLE_LARAVEL_WORKER_USER_SET}" ]; then
+                    print_info "Consider ENABLE_LARAVEL_WORKER=TRUE for queue processing"
+                    ENABLE_LARAVEL_WORKER=FALSE
+                fi
+                [ -z "${ENABLE_CONFIG_REDIRECTION_USER_SET}" ]    && ENABLE_CONFIG_REDIRECTION=FALSE
+                [ -z "${ENABLE_LOG_REDIRECTION_USER_SET}" ]       && ENABLE_LOG_REDIRECTION=FALSE
+                [ -z "${ENABLE_STORAGE_REDIRECTION_USER_SET}" ]   && ENABLE_STORAGE_REDIRECTION=FALSE
             ;;
         esac
     done

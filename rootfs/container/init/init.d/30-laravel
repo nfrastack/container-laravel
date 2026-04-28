@@ -8,6 +8,8 @@ prepare_service
 SERVICE_NAME="laravel"
 
 laravel_setup_webroot
+laravel_strip_path_repos
+laravel_export_composer_auth
 laravel_setup_container_mode
 
 if var_true "${ENABLE_LOG_REDIRECTION}" ; then
