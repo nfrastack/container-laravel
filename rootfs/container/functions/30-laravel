@@ -383,7 +383,7 @@ laravel_volatile_setup() {
             if [ ! -d "${STORAGE_PATH}" ]; then
                 print_info "Creating Storage Directory"
                 create_folder \
-                                "${STORAGE_PATH}"
+                                "${STORAGE_PATH}" \
                                 "${NGINX_USER}":"${NGINX_GROUP}" 775
             fi
             cp -aR "${NGINX_WEBROOT%/}"/storage/* "${STORAGE_PATH}"
