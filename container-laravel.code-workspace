@@ -19,6 +19,12 @@
 		{
 			"name": "gha",
 			"path": "../gha"
+		},
+		{
+			"path": "../bamboo-package"
+		},
+		{
+			"path": "../bamboo-demo"
 		}
 	],
 	"settings": {}

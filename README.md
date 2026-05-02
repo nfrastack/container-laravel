@@ -21,6 +21,7 @@ This repository will build a container image for running [Laravel](https://larav
   * [Environment Variables](#environment-variables)
     * [Base Images used](#base-images-used)
     * [Core Configuration](#core-configuration)
+  * [Artisan Setup Commands](#artisan-setup-commands)
   * [Users and Groups](#users-and-groups)
   * [Networking](#networking)
 * [Maintenance](#maintenance)
@@ -152,9 +153,61 @@ When `LARAVEL_GIT_REPO` is set, the container will clone the specified repositor
 | `LARAVEL_COMPOSER_AUTH`  | JSON string passed as `COMPOSER_AUTH` for private package authentication (see [Composer docs](https://getcomposer.org/doc/articles/authentication-for-private-packages.md)). Persisted to `${NGINX_USER}`'s `.bashrc` so interactive `composer update` runs inside the container also pick it up. |         | x       |
 | `LARAVEL_COMPOSER_SETUP` | Run `composer install` after cloning                                                               | `TRUE`  |         |
 | `LARAVEL_NPM_SETUP`     | Run `npm install` and `npm run build` after cloning                                                | `TRUE`  |         |
-| `LARAVEL_ADMIN_EMAIL`   | Optional. If set with `LARAVEL_ADMIN_PASSWORD`, runs the `bamboo:setup` artisan command after migrations to create an admin user. Silently skipped if the command is not available in the cloned app. |         | x       |
-| `LARAVEL_ADMIN_PASSWORD` | Password for the admin user                                                                       |         | x       |
-| `LARAVEL_ADMIN_NAME`    | Display name for the admin user                                                                    | `Admin` |         |
+| `LARAVEL_ARTISAN_SETUP_COMMANDS` | Artisan commands to run after the first-install clone. See [Artisan Setup Commands](#artisan-setup-commands). |  |  |
+
+### Artisan Setup Commands
+
+After the container clones a repository, installs Composer dependencies, and runs migrations on first boot, you can provide one or more artisan commands to be executed automatically. This is useful for seeding data, creating initial users, publishing assets, or any other bootstrapping step that turns a fresh clone into a ready-to-use application.
+
+#### Simple usage
+
+Set `LARAVEL_ARTISAN_SETUP_COMMANDS` to a newline-separated list of artisan sub-commands (everything that comes after `php artisan`):
+
+```yaml
+environment:
+  BAMBOO_ADMIN_USER: admin@example.com
+  BAMBOO_ADMIN_PASS: secretpassword
+  LARAVEL_ARTISAN_SETUP_COMMANDS: |
+    bamboo:setup --admin-email=${BAMBOO_ADMIN_USER} --admin-password=${BAMBOO_ADMIN_PASS}
+    cache:clear
+    storage:link
+```
+
+Each line is run as a separate `php artisan <command>` call under the web-server user. Blank lines and lines beginning with `#` are skipped. Commands can also be separated with `|` instead of newlines.
+
+#### Numbered slots
+
+When you need distinct setup stages — for example when a downstream image needs to insert commands between two steps — use the numbered variants `LARAVEL_ARTISAN_SETUP_COMMANDS_01` through `LARAVEL_ARTISAN_SETUP_COMMANDS_09`.
+
+The unnumbered variable always runs first, followed by slots `_01` → `_09` in order. Any slot that is not set is silently skipped.
+
+```yaml
+environment:
+  LARAVEL_ARTISAN_SETUP_COMMANDS: |
+    config:cache
+  LARAVEL_ARTISAN_SETUP_COMMANDS_01: |
+    db:seed --class=InitialSeeder
+  LARAVEL_ARTISAN_SETUP_COMMANDS_02: |
+    db:seed --class=ExtraSeeder
+    cache:clear
+```
+
+#### Calling a specific slot from a downstream image
+
+A downstream image's own init script can call a single slot by passing its two-digit number:
+
+```bash
+laravel_artisan_setup_commands 02
+```
+
+This runs only `LARAVEL_ARTISAN_SETUP_COMMANDS_02` and is a no-op if the variable is not set.
+
+| Parameter                             | Description                                                                                     | Default | `_FILE` |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------- | ------- | ------- |
+| `LARAVEL_ARTISAN_SETUP_COMMANDS`      | Artisan commands to run on first-install (newline- or pipe-separated, everything after `php artisan`) |  |  |
+| `LARAVEL_ARTISAN_SETUP_COMMANDS_01`   | Slot 01 — runs after the unnumbered variable                                                    |         |         |
+| `LARAVEL_ARTISAN_SETUP_COMMANDS_02`   | Slot 02                                                                                         |         |         |
+| `LARAVEL_ARTISAN_SETUP_COMMANDS_03` … `_09` | Additional ordered slots                                                                |         |         |
 
 ### Vite HMR (Remote Development)
 

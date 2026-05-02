@@ -161,6 +161,73 @@ laravel_configure_vite_hmr() {
     fi
 }
 
+laravel_artisan_setup_commands() {
+    # Run a configurable list of artisan commands after the first-install clone/setup.
+    # Commands are newline- or pipe (|)-separated artisan sub-commands (everything after
+    # "php artisan"). Each command runs as the web-server user inside NGINX_WEBROOT.
+    #
+    # Variables (all optional — only define the ones you need):
+    #   LARAVEL_ARTISAN_SETUP_COMMANDS       — unnumbered / simple catch-all, runs first
+    #   LARAVEL_ARTISAN_SETUP_COMMANDS_01    — slot 01  (iterated via floop)
+    #   LARAVEL_ARTISAN_SETUP_COMMANDS_02    — slot 02
+    #   ...
+    #
+    # When called with NO argument (the normal case from laravel_setup_webroot):
+    #   Runs LARAVEL_ARTISAN_SETUP_COMMANDS first, then iterates numbered slots via floop.
+    #
+    # When called with a two-digit slot number:
+    #   laravel_artisan_setup_commands 02
+    #   Runs only LARAVEL_ARTISAN_SETUP_COMMANDS_02. Downstream images can call
+    #   specific slots from their own init scripts to layer setup stages independently.
+    _slot="${1:-}"
+
+    if [ -n "${_slot}" ]; then
+        _laravel_artisan_cmd_slot "${_slot}"
+    else
+        _ran=0
+        if [ -n "${LARAVEL_ARTISAN_SETUP_COMMANDS}" ]; then
+            cd "${NGINX_WEBROOT}"
+            print_info "Running artisan setup commands"
+            _laravel_run_artisan_cmds "${LARAVEL_ARTISAN_SETUP_COMMANDS}"
+            _ran=$((_ran + 1))
+        fi
+        _count=$(printenv | grep -cE '^LARAVEL_ARTISAN_SETUP_COMMANDS_[0-9]' || true)
+        if [ "${_count:-0}" -gt 0 ]; then
+            floop "${_count}" _laravel_artisan_cmd_slot SDNAMMOC_PUTES_NASITRA_LEVARAL
+            _ran=$((_ran + 1))
+        fi
+        [ "${_ran}" -eq 0 ] && print_debug "No artisan setup commands defined — skipping"
+    fi
+}
+
+_laravel_artisan_cmd_slot() {
+    local i="${1}"
+    i=$(printf "%02d" "$i")
+    local _var="LARAVEL_ARTISAN_SETUP_COMMANDS_${i}"
+    local _cmds="${!_var}"
+    if [ -z "${_cmds}" ]; then
+        print_debug "No commands defined in ${_var} — skipping"
+        return
+    fi
+    cd "${NGINX_WEBROOT}"
+    print_info "Running artisan setup commands (slot ${i})"
+    _laravel_run_artisan_cmds "${_cmds}"
+}
+
+_laravel_run_artisan_cmds() {
+    printf '%s\n' "${1}" | tr '|' '\n' | while IFS= read -r _cmd; do
+        _cmd=$(printf '%s' "${_cmd}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        [ -z "${_cmd}" ] && continue
+        case "${_cmd}" in \#*) continue ;; esac
+        print_info "Artisan: php artisan ${_cmd}"
+        if ! silent sudo -u "${NGINX_USER}" sh -c "php ${NGINX_WEBROOT}/artisan ${_cmd}"; then
+            print_error "Artisan command failed: '${_cmd}' — retrying with output visible"
+            sudo -u "${NGINX_USER}" sh -c "php ${NGINX_WEBROOT}/artisan ${_cmd}"
+            exit 1
+        fi
+    done
+}
+
 laravel_setup_webroot() {
     if [ ! -f "${NGINX_WEBROOT}/artisan" ]; then
         chown -R "${NGINX_USER}":"${NGINX_GROUP}" \
@@ -270,32 +337,7 @@ laravel_setup_webroot() {
                     exit 1
                 fi
 
-                transform_var file LARAVEL_ADMIN_EMAIL
-                transform_var file LARAVEL_ADMIN_PASSWORD
-                if [ -n "${LARAVEL_ADMIN_EMAIL}" ] && [ -n "${LARAVEL_ADMIN_PASSWORD}" ]; then
-                    if sudo -u "${NGINX_USER}" php artisan list 2>/dev/null | grep -q "bamboo:setup"; then
-                        print_info "Running bamboo:setup with admin user '${LARAVEL_ADMIN_EMAIL}'"
-                        silent sudo -u "${NGINX_USER}" php artisan bamboo:setup \
-                            --admin-email="${LARAVEL_ADMIN_EMAIL}" \
-                            --admin-password="${LARAVEL_ADMIN_PASSWORD}" \
-                            --admin-name="${LARAVEL_ADMIN_NAME}" \
-                            --skip-migrate \
-                            --no-interaction
-                        _exit_code=$?
-                        if [ "${_exit_code}" -ne 0 ]; then
-                            print_error "bamboo:setup failed (exit code ${_exit_code}) — retrying with output visible"
-                            sudo -u "${NGINX_USER}" php artisan bamboo:setup \
-                                --admin-email="${LARAVEL_ADMIN_EMAIL}" \
-                                --admin-password="${LARAVEL_ADMIN_PASSWORD}" \
-                                --admin-name="${LARAVEL_ADMIN_NAME}" \
-                                --skip-migrate \
-                                --no-interaction
-                            exit 1
-                        fi
-                    else
-                        print_debug "bamboo:setup command not available — skipping admin user creation"
-                    fi
-                fi
+                laravel_artisan_setup_commands
             fi
 
             if var_true "${LARAVEL_NPM_SETUP}" ; then
@@ -395,11 +437,9 @@ laravel_volatile_setup() {
 }
 
 laravel_strip_path_repos() {
-    # Remove `type: path` Composer repositories from composer.json. Path
-    # repos exist for local development on the maintainer's workstation
-    # and never resolve inside the container, so any Composer command
-    # would error with "url supplied for the path ... does not exist".
-    # Idempotent — only rewrites the file when something actually changed.
+    # Remove `type: path` Composer repositories from composer.json. Path repos exist for local development on the maintainer's workstation
+    # and never resolve inside the container, so any Composer command would error with "url supplied for the path ... does not exist".
+    # Only rewrites the file when something actually changed.
     if [ ! -f "${NGINX_WEBROOT%/}"/composer.json ]; then
         return
     fi
@@ -417,27 +457,6 @@ laravel_strip_path_repos() {
     ' "${NGINX_WEBROOT%/}"/composer.json 2>/dev/null)
     if [ "${_result}" = "removed" ]; then
         print_debug "Stripped local path repositories from composer.json"
-    fi
-}
-
-laravel_export_composer_auth() {
-    # Persist LARAVEL_COMPOSER_AUTH into the nginx user's environment so
-    # interactive `composer update` runs from inside the container can
-    # auth against private VCS repos without re-passing the credentials.
-    transform_var file LARAVEL_COMPOSER_AUTH
-    if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then
-        _bashrc=$(getent passwd "${NGINX_USER}" | cut -d: -f6)/.bashrc
-        if [ -n "${_bashrc}" ]; then
-            mkdir -p "$(dirname "${_bashrc}")"
-            touch "${_bashrc}"
-            sed -i "/^export COMPOSER_AUTH=/d" "${_bashrc}" 2>/dev/null
-            echo "export COMPOSER_AUTH='${LARAVEL_COMPOSER_AUTH}'" >> "${_bashrc}"
-            chown "${NGINX_USER}":"${NGINX_GROUP}" "${_bashrc}" 2>/dev/null
-        fi
-        # Also export to the current init shell so any composer commands
-        # the container itself runs (post-install hooks, scheduled tasks)
-        # inherit the auth.
-        export COMPOSER_AUTH="${LARAVEL_COMPOSER_AUTH}"
     fi
 }
 

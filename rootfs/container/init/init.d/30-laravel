@@ -9,22 +9,21 @@ SERVICE_NAME="laravel"
 
 laravel_setup_webroot
 laravel_strip_path_repos
-laravel_export_composer_auth
 laravel_setup_container_mode
 
 if var_true "${ENABLE_LOG_REDIRECTION}" ; then
     print_info "Setting up log redirection to '${LOG_PATH}'"
-    laravel_volatile_setup log
+    call laravel_volatile_setup log
 fi
 
 if var_true "${ENABLE_CONFIG_REDIRECTION}" ; then
     print_info "Setting up config redirection to '${CONFIG_PATH}'"
-    laravel_volatile_setup config
+    call laravel_volatile_setup config
 fi
 
 if var_true "${ENABLE_STORAGE_REDIRECTION}" ; then
     print_info "Setting up storage redirection to '${STORAGE_PATH}'"
-    laravel_volatile_setup storage
+    call laravel_volatile_setup storage
 fi
 
 call laravel_volatile_setup logs
@@ -33,8 +32,8 @@ if [ "${SETUP_TYPE,,}" = "auto" ]; then
     print_notice "Generating Configuration"
 
     if [ ! -f "${NGINX_WEBROOT}/.env" ] ; then
-        print_debug "Copying Example .env to .env"
-        cat /container/data/laravel/install/.env.example | write_file "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}"/.env 660
+        print_debug "Copying .env.example to .env"
+        cat /container/data/laravel/install/.env.example | write_file "${NGINX_USER}":"${NGINX_GROUP}"@"${NGINX_WEBROOT}"/.env:660
     fi
 
     call laravel_configure_app_key
