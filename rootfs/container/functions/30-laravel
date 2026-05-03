@@ -461,34 +461,29 @@ laravel_strip_path_repos() {
 }
 
 laravel_setup_container_mode() {
-    # User-set values are respected — only fill in mode-specific defaults the
-    # operator didn't explicitly choose. The *_USER_SET flags are captured at
-    # the top of /container/defaults/30-laravel BEFORE defaults are applied.
     modes=$(echo "${LARAVEL_IMAGE_MODE}" | tr "," "\n")
     for mode in $modes; do
         case "${mode,,}" in
             prod* )
                 print_info "Laravel Image: Production Mode"
-                [ -z "${ENABLE_LARAVEL_ARTISAN_SERVE_USER_SET}" ] && ENABLE_LARAVEL_ARTISAN_SERVE=FALSE
-                [ -z "${ENABLE_LARAVEL_ENV_WATCHER_USER_SET}" ]   && ENABLE_LARAVEL_ENV_WATCHER=TRUE
-                [ -z "${ENABLE_LARAVEL_NPM_RUN_DEV_USER_SET}" ]   && ENABLE_LARAVEL_NPM_RUN_DEV=FALSE
-                [ -z "${ENABLE_LARAVEL_WORKER_USER_SET}" ]        && ENABLE_LARAVEL_WORKER=TRUE
-                [ -z "${ENABLE_CONFIG_REDIRECTION_USER_SET}" ]    && ENABLE_CONFIG_REDIRECTION=TRUE
-                [ -z "${ENABLE_LOG_REDIRECTION_USER_SET}" ]       && ENABLE_LOG_REDIRECTION=TRUE
-                [ -z "${ENABLE_STORAGE_REDIRECTION_USER_SET}" ]   && ENABLE_STORAGE_REDIRECTION=TRUE
+                ENABLE_LARAVEL_ARTISAN_SERVE=${ENABLE_LARAVEL_ARTISAN_SERVE:-FALSE}
+                ENABLE_LARAVEL_NPM_RUN_DEV=${ENABLE_LARAVEL_NPM_RUN_DEV:-FALSE}
+                ENABLE_LARAVEL_WORKER=${ENABLE_LARAVEL_WORKER:-TRUE}
+                ENABLE_CONFIG_REDIRECTION=${ENABLE_CONFIG_REDIRECTION:-TRUE}
+                ENABLE_LOG_REDIRECTION=${ENABLE_LOG_REDIRECTION:-TRUE}
+                ENABLE_STORAGE_REDIRECTION=${ENABLE_STORAGE_REDIRECTION:-TRUE}
             ;;
             develop* | * )
                 print_info "Laravel Image: Development Mode"
-                [ -z "${ENABLE_LARAVEL_ARTISAN_SERVE_USER_SET}" ] && ENABLE_LARAVEL_ARTISAN_SERVE=TRUE
-                [ -z "${ENABLE_LARAVEL_ENV_WATCHER_USER_SET}" ]   && ENABLE_LARAVEL_ENV_WATCHER=TRUE
-                [ -z "${ENABLE_LARAVEL_NPM_RUN_DEV_USER_SET}" ]   && ENABLE_LARAVEL_NPM_RUN_DEV=TRUE
-                if [ -z "${ENABLE_LARAVEL_WORKER_USER_SET}" ]; then
+                ENABLE_LARAVEL_ARTISAN_SERVE=${ENABLE_LARAVEL_ARTISAN_SERVE:-TRUE}
+                ENABLE_LARAVEL_NPM_RUN_DEV=${ENABLE_LARAVEL_NPM_RUN_DEV:-TRUE}
+                if [ -z "${ENABLE_LARAVEL_WORKER}" ]; then
                     print_info "Consider ENABLE_LARAVEL_WORKER=TRUE for queue processing"
                     ENABLE_LARAVEL_WORKER=FALSE
                 fi
-                [ -z "${ENABLE_CONFIG_REDIRECTION_USER_SET}" ]    && ENABLE_CONFIG_REDIRECTION=FALSE
-                [ -z "${ENABLE_LOG_REDIRECTION_USER_SET}" ]       && ENABLE_LOG_REDIRECTION=FALSE
-                [ -z "${ENABLE_STORAGE_REDIRECTION_USER_SET}" ]   && ENABLE_STORAGE_REDIRECTION=FALSE
+                ENABLE_CONFIG_REDIRECTION=${ENABLE_CONFIG_REDIRECTION:-FALSE}
+                ENABLE_LOG_REDIRECTION=${ENABLE_LOG_REDIRECTION:-FALSE}
+                ENABLE_STORAGE_REDIRECTION=${ENABLE_STORAGE_REDIRECTION:-FALSE}
             ;;
         esac
     done
