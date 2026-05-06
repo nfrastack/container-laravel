@@ -11,6 +11,76 @@ laravel_update_env() {
     fi
 }
 
+laravel_apply_env_prefix_passthrough() {
+    # Pass-through any container env var that starts with ${ENV_PREFIX} into the application's .env file with the prefix stripped.
+
+    # Examples (with ENV_PREFIX=ENV_):
+    #   ENV_FOO=bar      -> .env line `FOO=bar`  (added or rewritten)
+    #   ENV_FOO=unset    -> remove `FOO=...` from .env
+    #   ENV_FOO=null     -> remove `FOO=...` from .env
+    #   ENV_FOO=         -> remove `FOO=...` from .env
+    #
+    # Variables that the container itself owns (LARAVEL_GIT_*, LARAVEL_COMPOSER_*, LARAVEL_NPM_*, LARAVEL_ADMIN_*, LARAVEL_ARTISAN_SETUP_COMMANDS*, LARAVEL_IMAGE_MODE, LARAVEL_CONFIGURE_*) are skipped if the prefix collides with LARAVEL_ - they control container behavior, not app config.
+
+    local _prefix="${ENV_PREFIX}"
+    if [ -z "${_prefix}" ]; then
+        print_debug "ENV_PREFIX is empty - skipping env-prefix pass-through"
+        return
+    fi
+    if [ ! -f "${NGINX_WEBROOT%/}"/.env ]; then
+        print_debug "No .env file present - skipping env-prefix pass-through"
+        return
+    fi
+
+    print_debug "Applying env-prefix pass-through (prefix='${_prefix}')"
+
+    local _line _name _stripped _value
+    while IFS= read -r _line; do
+        _name="${_line%%=*}"
+        case "${_name}" in
+            "${_prefix}"*) ;;
+            *) continue ;;
+        esac
+
+        # Skip container-owned LARAVEL_* control variables when ENV_PREFIX=LARAVEL_
+        case "${_name}" in
+            LARAVEL_GIT_*|LARAVEL_COMPOSER_*|LARAVEL_NPM_*|LARAVEL_ADMIN_*|LARAVEL_ARTISAN_SETUP_COMMANDS*|LARAVEL_IMAGE_MODE|LARAVEL_CONFIGURE_*) continue ;;
+        esac
+
+        _stripped="${_name#${_prefix}}"
+        if [ -z "${_stripped}" ]; then
+            continue
+        fi
+        _value="${_line#*=}"
+
+        case "${_value,,}" in
+            unset|null|"")
+                if grep -qE "^${_stripped}=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+                    print_debug "Removing .env entry '${_stripped}' (source ${_name}=${_value:-empty})"
+                    sed -i --follow-symlinks "/^${_stripped}=/d" "${NGINX_WEBROOT%/}"/.env
+                fi
+                ;;
+            *)
+                if grep -qE "^${_stripped}=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
+                    print_debug "Updating .env entry '${_stripped}' from ${_name}"
+                    if [[ ${_value} = *[[:space:]]* ]]; then
+                        sed -i --follow-symlinks "s|^${_stripped}=.*|${_stripped}=\"${_value}\"|" "${NGINX_WEBROOT%/}"/.env
+                    else
+                        sed -i --follow-symlinks "s|^${_stripped}=.*|${_stripped}=${_value}|" "${NGINX_WEBROOT%/}"/.env
+                    fi
+                else
+                    print_debug "Appending .env entry '${_stripped}' from ${_name}"
+                    if [[ ${_value} = *[[:space:]]* ]]; then
+                        echo "${_stripped}=\"${_value}\"" >> "${NGINX_WEBROOT%/}"/.env
+                    else
+                        echo "${_stripped}=${_value}" >> "${NGINX_WEBROOT%/}"/.env
+                    fi
+                fi
+                ;;
+        esac
+    done < <(printenv)
+}
+
 laravel_configure_db() {
     if var_true "${LARAVEL_CONFIGURE_DB}" ; then
         print_debug "Updating DB Information"
@@ -171,13 +241,9 @@ laravel_artisan_setup_commands() {
     #   LARAVEL_ARTISAN_SETUP_COMMANDS_01    — slot 01  (iterated via floop)
     #   LARAVEL_ARTISAN_SETUP_COMMANDS_02    — slot 02
     #   ...
-    #
-    # When called with NO argument (the normal case from laravel_setup_webroot):
-    #   Runs LARAVEL_ARTISAN_SETUP_COMMANDS first, then iterates numbered slots via floop.
-    #
+    #    #
     # When called with a two-digit slot number:
-    #   laravel_artisan_setup_commands 02
-    #   Runs only LARAVEL_ARTISAN_SETUP_COMMANDS_02. Downstream images can call
+    #   laravel_artisan_setup_commands 02 - Runs only LARAVEL_ARTISAN_SETUP_COMMANDS_02. Downstream images can call -
     #   specific slots from their own init scripts to layer setup stages independently.
     _slot="${1:-}"
 
@@ -196,7 +262,7 @@ laravel_artisan_setup_commands() {
             floop "${_count}" _laravel_artisan_cmd_slot SDNAMMOC_PUTES_NASITRA_LEVARAL
             _ran=$((_ran + 1))
         fi
-        [ "${_ran}" -eq 0 ] && print_debug "No artisan setup commands defined — skipping"
+        if [ "${_ran}" -eq 0 ] ; then print_debug "No artisan setup commands defined - skipping" ; fi
     fi
 }
 
@@ -381,9 +447,9 @@ laravel_setup_webroot() {
         fi
     fi
 
-    if [ ! -f "${NGINX_WEBROOT%/}"/.gitignore ] ; then
+    if [ ! -f "${NGINX_WEBROOT%/}"/.gitignore ] && [ -f "${LARAVEL_INSTALL_DATA_PATH}/gitignore" ] ; then
         print_debug "Creating .gitignore file"
-        cat /container/data/laravel/gitignore | write_file "${NGINX_USER}" "${NGINX_WEBROOT%/}"/.gitignore:644
+        cat "${LARAVEL_INSTALL_DATA_PATH}"/gitignore | write_file "${NGINX_USER}" "${NGINX_WEBROOT%/}"/.gitignore:644
     fi
 }
 
@@ -437,8 +503,7 @@ laravel_volatile_setup() {
 }
 
 laravel_strip_path_repos() {
-    # Remove `type: path` Composer repositories from composer.json. Path repos exist for local development on the maintainer's workstation
-    # and never resolve inside the container, so any Composer command would error with "url supplied for the path ... does not exist".
+    # Remove `type: path` Composer repositories from composer.json. Path repos exist for local development on the maintainer's workstation and never resolve inside the container, so any Composer command would error with "url supplied for the path does not exist".
     # Only rewrites the file when something actually changed.
     if [ ! -f "${NGINX_WEBROOT%/}"/composer.json ]; then
         return
@@ -497,7 +562,7 @@ artisan() {
     cd ${NGINX_WEBROOT}
     sudo -u ${NGINX_USER} php artisan "\$@"
     cd "\${oldpwd}"
-    }
+}
 EOF
     fi
 }

@@ -32,8 +32,10 @@ if [ "${SETUP_TYPE,,}" = "auto" ]; then
     print_notice "Generating Configuration"
 
     if [ ! -f "${NGINX_WEBROOT}/.env" ] ; then
-        print_debug "Copying .env.example to .env"
-        cat /container/data/laravel/install/.env.example | write_file "${NGINX_USER}":"${NGINX_GROUP}"@"${NGINX_WEBROOT}"/.env:660
+        if var_true "${LARAVEL_COPY_ENV_EXAMPLE}" && [ -f "${LARAVEL_INSTALL_DATA_PATH}/.env.example" ] ; then
+            print_debug "Copying .env.example to .env"
+            cat "${LARAVEL_INSTALL_DATA_PATH}"/.env.example | write_file "${NGINX_USER}":"${NGINX_GROUP}"@"${NGINX_WEBROOT}"/.env:660
+        fi
     fi
 
     call laravel_configure_app_key
@@ -45,6 +47,7 @@ if [ "${SETUP_TYPE,,}" = "auto" ]; then
     call laravel_configure_mail
 fi
 
+call laravel_apply_env_prefix_passthrough
 call laravel_configure_vite_hmr
 
 if var_false "${ENABLE_LARAVEL_WORKER}" ; then
