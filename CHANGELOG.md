@@ -1,3 +1,12 @@
+## 1.0.1 2026-05-13 <code at nfrastack dot com>
+
+   ### Added
+      - LARAVEL_ENV_PREFIX now supports dynamic value building with [env]
+
+   ### Changed
+      - Fix env_update to treat the env as a string and not get caught up with operators
+
+
 ## 1.0.0 2026-05-11 <code at nfrastack dot com>
 
    ### Added

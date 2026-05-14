@@ -433,25 +433,6 @@ ENABLE_LOG_REDIRECTION=FALSE          # Local log files
 ENABLE_STORAGE_REDIRECTION=FALSE      # Local storage files
 ```
 
-### Why Production Mode Matters
-
-Laravel Artisan Serve Limitations:
-
-- Artisan serve is Laravel's built-in development server
-- Single-threaded and not designed for production traffic
-- It lacks the performance, security, and stability features of proper web servers
-- Cannot handle concurrent requests effectively
-
-Production Benefits:
-
-- Nginx + PHP-FPM is multi-process, multi-threaded architecture for handling concurrent requests
-- Performance optimized for high-traffic and production workloads
-- Security -  Production-hardened web server configuration
-- Reliability -  Better error handling and recovery mechanisms
-- Scalability - Can handle thousands of concurrent connections
-- File redirection to keep important data outside the container
-- Configuration, logs, and storage persist across container restarts
-
 * * *
 
 ## Maintenance

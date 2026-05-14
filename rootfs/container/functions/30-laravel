@@ -45,10 +45,10 @@ _laravel_acquire_from_data_path() {
 }
 
 laravel_artisan_setup_commands() {
-    # Commands are newline- or pipe (|)-separated artisan sub-commands (everything after ... artisan ... eg 'migrate --force'
+    # Commands are newline- or pipe (|)-separated artisan sub-commands (everything after artisan eg 'migrate --force')
     # Variables
-    #   LARAVEL_ARTISAN_SETUP_COMMANDS       — unnumbered / simple catch-all, runs first
-    #   LARAVEL_ARTISAN_SETUP_COMMANDS01    — slot 01  (
+    #   LARAVEL_ARTISAN_SETUP_COMMANDS      — unnumbered catch-all - runs first
+    #   LARAVEL_ARTISAN_SETUP_COMMANDS01    — slot 01
     #   LARAVEL_ARTISAN_SETUP_COMMANDS02    — slot 02
     _slot="${1:-}"
 
@@ -199,15 +199,33 @@ _laravel_post_source_setup() {
 laravel_env_remove() {
     # laravel_env_remove KEY
     local _key="$1"
-    if [ -f "${NGINX_WEBROOT%/}"/.env ] && grep -qE "^${_key}=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
-        print_debug "[env_remove] Removing .env entry '${_key}'"
-        sed -i --follow-symlinks "/^${_key}=/d" "${NGINX_WEBROOT%/}"/.env
+    local _env="${NGINX_WEBROOT%/}/.env"
+    local _tmp
+
+    if [ ! -f "${_env}" ]; then
+        return
     fi
+    if ! grep -qE "^${_key}=" "${_env}" 2>/dev/null; then
+        return
+    fi
+
+    print_debug "[env_remove] Removing .env entry '${_key}'"
+
+    _tmp="${_env}.tmp.$$"
+    LARAVEL_ENV_KEY="${_key}" awk '
+        BEGIN { key = ENVIRON["LARAVEL_ENV_KEY"] "=" }
+        index($0, key) == 1 { next }
+        { print }
+    ' "${_env}" > "${_tmp}"
+    cat "${_tmp}" > "${_env}"
+    rm -f "${_tmp}"
 }
 
 laravel_env_passthrough() {
     #   ENV_FOO=bar                 -     .env line `FOO=bar`  (added or rewritten)
     #   ENV_FOO=unset|null|""       -     .env line `FOO=bar`  (removed)
+    #   ENV_FOO=env:OTHER_VAR       -     resolved via transform_var env before write
+    #   ENV_FOO_FILE=/path/secret   -     resolved via transform_var file before write
 
     local _prefix="${LARAVEL_ENV_PREFIX}"
     if [ -z "${_prefix}" ]; then
@@ -220,6 +238,7 @@ laravel_env_passthrough() {
     fi
 
     transform_var file "${_prefix}*"
+    transform_var env  "${_prefix}*"
 
     print_debug "[env_passthrough] Applying passthrough (prefix='${_prefix}')"
 
@@ -260,30 +279,42 @@ laravel_env_passthrough() {
 
 laravel_env_update() {
     # laravel_env_update KEY VALUE
-    # Set or update a key=value pair in the application .env file. If the key already exists, replace the line via sed. If the key is absent, append a new line. Values containing whitespace are quoted.
+    # Set or update a key=value pair in the application .env
+    # Values containing whitespace are double-quoted.
     local _key="$1"
     local _val="$2"
+    local _env="${NGINX_WEBROOT%/}/.env"
+    local _line _tmp
 
-    if [ ! -f "${NGINX_WEBROOT%/}"/.env ]; then
+    if [ ! -f "${_env}" ]; then
         print_debug "No .env file - skipping update for '${_key}'"
         return
     fi
 
-    if grep -qE "^${_key}=" "${NGINX_WEBROOT%/}"/.env 2>/dev/null; then
-        print_debug "[env_update] Updating .env '${_key}' = '${_val}'"
-        if [[ ${_val} = *[[:space:]]* ]]; then
-            sed -i --follow-symlinks "s|^${_key}=.*|${_key}=\"${_val}\"|" "${NGINX_WEBROOT%/}"/.env
-        else
-            sed -i --follow-symlinks "s|^${_key}=.*|${_key}=${_val}|" "${NGINX_WEBROOT%/}"/.env
-        fi
+    if [[ ${_val} = *[[:space:]]* ]]; then
+        _line="${_key}=\"${_val}\""
     else
-        print_debug "[env_update] Appending .env '${_key}' = '${_val}'"
-        if [[ ${_val} = *[[:space:]]* ]]; then
-            echo "${_key}=\"${_val}\"" | write_file -a "${NGINX_USER}":"${NGINX_GROUP}"@"${NGINX_WEBROOT%/}"/.env
-        else
-            echo "${_key}=${_val}" | write_file -a "${NGINX_USER}":"${NGINX_GROUP}"@"${NGINX_WEBROOT%/}"/.env
-        fi
+        _line="${_key}=${_val}"
     fi
+
+    print_debug "[env_update] Setting .env '${_key}' = '${_val}'"
+
+    _tmp="${_env}.tmp.$$"
+    LARAVEL_ENV_KEY="${_key}" LARAVEL_ENV_LINE="${_line}" awk '
+        BEGIN {
+            key   = ENVIRON["LARAVEL_ENV_KEY"] "="
+            line  = ENVIRON["LARAVEL_ENV_LINE"]
+            found = 0
+        }
+        index($0, key) == 1 {
+            if (!found) { print line; found = 1 }
+            next
+        }
+        { print }
+        END { if (!found) print line }
+    ' "${_env}" > "${_tmp}"
+    cat "${_tmp}" > "${_env}"
+    rm -f "${_tmp}"
 }
 
 laravel_env_write_header() {
