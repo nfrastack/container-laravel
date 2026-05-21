@@ -612,7 +612,7 @@ laravel_db_is_populated() {
                 false) _ssl="--skip-ssl" ;;
             esac
             local _ssl_ca=""
-            if [ -z "${DB_SSL_CA}" ]; then
+            if ! [ -z "${DB_SSL_CA}" ]; then
                 _ssl_ca="--ssl-ca=${DB_SSL_CA}"
             fi
             if ! mariadb ${_ssl} ${_ssl_ca} \
