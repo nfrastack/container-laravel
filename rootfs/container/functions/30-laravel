@@ -196,29 +196,17 @@ _laravel_post_source_setup() {
     fi
 }
 
-laravel_env_remove() {
-    # laravel_env_remove KEY
+laravel_env_get() {
+    # laravel_env_get KEY
+    # Read the current value of KEY from the application .env. Returns empty string if the file does not exist or the key is not present.
     local _key="$1"
     local _env="${NGINX_WEBROOT%/}/.env"
-    local _tmp
 
     if [ ! -f "${_env}" ]; then
         return
     fi
-    if ! grep -qE "^${_key}=" "${_env}" 2>/dev/null; then
-        return
-    fi
 
-    print_debug "[env_remove] Removing .env entry '${_key}'"
-
-    _tmp="${_env}.tmp.$$"
-    LARAVEL_ENV_KEY="${_key}" awk '
-        BEGIN { key = ENVIRON["LARAVEL_ENV_KEY"] "=" }
-        index($0, key) == 1 { next }
-        { print }
-    ' "${_env}" > "${_tmp}"
-    cat "${_tmp}" > "${_env}"
-    rm -f "${_tmp}"
+    awk -v key="${_key}=" 'index($0, key) == 1 { print substr($0, length(key) + 1); exit }' "${_env}"
 }
 
 laravel_env_passthrough() {
@@ -275,6 +263,31 @@ laravel_env_passthrough() {
             ;;
         esac
     done < <(printenv)
+}
+
+laravel_env_remove() {
+    # laravel_env_remove KEY
+    local _key="$1"
+    local _env="${NGINX_WEBROOT%/}/.env"
+    local _tmp
+
+    if [ ! -f "${_env}" ]; then
+        return
+    fi
+    if ! grep -qE "^${_key}=" "${_env}" 2>/dev/null; then
+        return
+    fi
+
+    print_debug "[env_remove] Removing .env entry '${_key}'"
+
+    _tmp="${_env}.tmp.$$"
+    LARAVEL_ENV_KEY="${_key}" awk '
+        BEGIN { key = ENVIRON["LARAVEL_ENV_KEY"] "=" }
+        index($0, key) == 1 { next }
+        { print }
+    ' "${_env}" > "${_tmp}"
+    cat "${_tmp}" > "${_env}"
+    rm -f "${_tmp}"
 }
 
 laravel_env_update() {
@@ -352,21 +365,15 @@ EOF
 
 laravel_configure_app_key() {
     if var_true "${LARAVEL_CONFIGURE_APP_KEY}" ; then
-        cd "${NGINX_WEBROOT}"
-        transform_var file \
-                            APP_KEY
+        transform_var file APP_KEY
         if [ -n "${APP_KEY}" ] ; then
-            print_debug "[configure_app_key] Setting APP_KEY from Environment Variable"
+            print_debug "[configure_app_key] Setting APP_KEY from environment variable"
             laravel_env_update APP_KEY "${APP_KEY}"
+        elif [ -n "$(laravel_env_get APP_KEY)" ] ; then
+            print_debug "[configure_app_key] APP_KEY already present in .env - preserving"
         else
-            print_debug "[configure_app_key] Generating APP_KEY via --show + env_update"
-            local _generated_key
-            _generated_key=$(sudo -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan key:generate --show 2>/dev/null)
-            if [ -n "${_generated_key}" ]; then
-                laravel_env_update APP_KEY "${_generated_key}"
-            else
-                print_warn "[configure_app_key] Could not generate APP_KEY - artisan key:generate --show returned nothing"
-            fi
+            print_debug "[configure_app_key] No APP_KEY found - generating"
+            silent sudo -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan key:generate
         fi
     fi
 }
@@ -857,25 +864,29 @@ laravel_volatile_setup() {
                     "${STORAGE_PATH}"|"${STORAGE_PATH%/}")
                         _already_redirected=true
                         print_debug "Storage already redirected to '${STORAGE_PATH}'"
-                        ;;
+                    ;;
                 esac
             fi
 
             if ! ${_already_redirected}; then
-                if [ -d "${NGINX_WEBROOT%/}"/storage ] \
-                        && [ ! -L "${NGINX_WEBROOT%/}"/storage ] \
-                        && dir_empty "${STORAGE_PATH%/}"; then
+                if [ -d "${NGINX_WEBROOT%/}"/storage ] && [ ! -L "${NGINX_WEBROOT%/}"/storage ] && dir_empty "${STORAGE_PATH%/}"; then
                     cp -aR "${NGINX_WEBROOT%/}"/storage/. "${STORAGE_PATH%/}"/
                 fi
                 rm -rf "${NGINX_WEBROOT%/}"/storage
                 ln -s "${STORAGE_PATH}" "${NGINX_WEBROOT%/}"/storage
             fi
 
-            for _sub in app/public framework/cache framework/sessions framework/testing framework/views logs; do
-                if [ ! -d "${STORAGE_PATH%/}/${_sub}" ]; then
-                    create_folder "${STORAGE_PATH%/}/${_sub}" "${NGINX_USER}":"${NGINX_GROUP}" 775
-                fi
-            done
+            create_folder \
+                "${STORAGE_PATH%/}/app,\
+                ${STORAGE_PATH%/}/app/public,\
+                ${STORAGE_PATH%/}/framework,\
+                ${STORAGE_PATH%/}/framework/cache,\
+                ${STORAGE_PATH%/}/framework/cache/data,\
+                ${STORAGE_PATH%/}/framework/sessions,\
+                ${STORAGE_PATH%/}/framework/testing,\
+                ${STORAGE_PATH%/}/framework/views,\
+                ${STORAGE_PATH%/}/logs" \
+                "${NGINX_USER}":"${NGINX_GROUP}" 775 norecurse force
         ;;
     esac
 }

@@ -1,3 +1,12 @@
+## 1.0.2 2026-05-23 <code at nfrastack dot com>
+
+   ### Added
+      - Add new functions for reading .env environment variables
+
+   ### Changed
+      - Refine permissions ownership routines on /storage folders for continued startups
+
+
 ## 1.0.1 2026-05-13 <code at nfrastack dot com>
 
    ### Added
