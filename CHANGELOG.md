@@ -1,3 +1,9 @@
+## 1.0.3 2026-05-28 <code at nfrastack dot com>
+
+   ### Changed
+      - Add auto migration routine for ${CONFIG_PATH} when it is already a file to move to ${CONFIG_PATH}/${CONFIG_FILE}
+
+
 ## 1.0.2 2026-05-23 <code at nfrastack dot com>
 
    ### Added

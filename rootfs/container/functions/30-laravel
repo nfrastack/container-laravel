@@ -797,6 +797,20 @@ EOF
 laravel_volatile_setup() {
     case "${@,,}" in
         config )
+            ## Auto-migrate legacy layout: /data/config was a plain file, not a directory
+            _config_path_bare="${CONFIG_PATH%/}"
+            if [ -f "${_config_path_bare}" ] && [ ! -d "${_config_path_bare}" ]; then
+                print_warn "Legacy config layout detected: '${_config_path_bare}' is a file, not a directory"
+                print_notice "Auto-migrating: moving '${_config_path_bare}' -> '${_config_path_bare}/${CONFIG_FILE}'"
+                mv "${_config_path_bare}" "${_config_path_bare}.migrate_tmp"
+                create_folder "${_config_path_bare}" "${NGINX_USER}":"${NGINX_GROUP}" 775
+                mv "${_config_path_bare}.migrate_tmp" "${_config_path_bare}/${CONFIG_FILE}"
+                chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${_config_path_bare}/${CONFIG_FILE}"
+                chmod 660 "${_config_path_bare}/${CONFIG_FILE}"
+                print_notice "Auto-migration complete: config is now at '${_config_path_bare}/${CONFIG_FILE}'"
+            fi
+            unset _config_path_bare
+
             if [ ! -d "${CONFIG_PATH}" ]; then
                 print_info "Creating Config Directory"
                 create_folder \
