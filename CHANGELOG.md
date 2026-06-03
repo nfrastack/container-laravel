@@ -1,3 +1,9 @@
+## 1.0.4 2026-06-02 <code at nfrastack dot com>
+
+   ### Added
+      - Add DB_SSL_CA support for selfdesigned CAs for mysql/mariadb (credit @artlogic:github)
+
+
 ## 1.0.3 2026-05-28 <code at nfrastack dot com>
 
    ### Changed
