@@ -255,6 +255,7 @@ Activated when `LARAVEL_CONFIGURE_DB=TRUE`.
 | `DB_USER`                      | Username (`DB_USERNAME` in .env)                                                                   |           | x       |
 | `DB_PASS`                      | Password (`DB_PASSWORD` in .env)                                                                   |           | x       |
 | `DB_SSL`                       | mariadb/mysql only - `TRUE` forces `--ssl`, `FALSE` forces `--skip-ssl`, unset uses driver default |           |         |
+| `DB_SSL_CA`                    | mariadb/mysql only - specifies the CA file using `--ssl-ca`, forces `--ssl`                        |           |         |
 | `DB_SSL_MODE`                  | postgres only - libpq sslmode (`disable`, `prefer`, `require`)                                     | `prefer`  |         |
 | `LARAVEL_DB_FRESH_CHECK_TABLE` | Marker table `laravel_db_is_populated` looks for                                                   | `users`   |         |
 

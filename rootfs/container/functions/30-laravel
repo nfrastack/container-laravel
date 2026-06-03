@@ -618,7 +618,11 @@ laravel_db_is_populated() {
                 true)  _ssl="--ssl" ;;
                 false) _ssl="--skip-ssl" ;;
             esac
-            if ! mariadb ${_ssl} \
+            local _ssl_ca=""
+            if ! [ -z "${DB_SSL_CA}" ]; then
+                _ssl_ca="--ssl-ca=\"${DB_SSL_CA}\""
+            fi
+            if ! mariadb ${_ssl} ${_ssl_ca} \
                         -u"${DB_USER}" \
                         -p"${DB_PASS}" \
                         -h"${DB_HOST}" \
@@ -633,7 +637,7 @@ laravel_db_is_populated() {
                         -e "SELECT 1;" "${DB_NAME}"
                 exit 1
             fi
-            if mariadb ${_ssl} \
+            if mariadb ${_ssl} ${_ssl_ca} \
                         -u"${DB_USER}" \
                         -p"${DB_PASS}" \
                         -h"${DB_HOST}" \
