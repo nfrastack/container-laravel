@@ -1,3 +1,9 @@
+## 1.0.5 2026-07-19 <code at nfrastack dot com>
+
+   ### Changed
+      - Fix APP_KEY generation when older laravel frameworks run on PHP 8.5 without an existing entry in .env
+
+
 ## 1.0.4 2026-06-02 <code at nfrastack dot com>
 
    ### Added

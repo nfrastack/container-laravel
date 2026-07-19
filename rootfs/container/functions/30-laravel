@@ -373,6 +373,7 @@ laravel_configure_app_key() {
             print_debug "[configure_app_key] APP_KEY already present in .env - preserving"
         else
             print_debug "[configure_app_key] No APP_KEY found - generating"
+            laravel_env_update APP_KEY ""
             silent sudo -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan key:generate
         fi
     fi
