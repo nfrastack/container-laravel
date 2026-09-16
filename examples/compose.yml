@@ -45,7 +45,7 @@ services:
     restart: always
 
   laravel-db-backup:
-    image: docker.io/tiredofit/db-backup:latest
+    image: docker.io/nfrastack/db-backup:latest
     container_name: laravel-db-backup
     volumes:
       - ./dbbackup:/backup
