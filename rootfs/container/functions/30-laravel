@@ -10,7 +10,7 @@ _laravel_acquire_from_git() {
         _git_url=$(echo "${_git_url}" | sed "s|://|://${LARAVEL_GIT_TOKEN}@|")
     fi
 
-    silent sudo -u "${NGINX_USER}" \
+    silent sudo -H -u "${NGINX_USER}" \
                             git clone \
                                 --branch "${LARAVEL_GIT_BRANCH}" \
                                 --single-branch \
@@ -21,7 +21,7 @@ _laravel_acquire_from_git() {
     if [ "${_exit_code}" -ne 0 ]; then
         print_error "Git clone failed (exit code ${_exit_code}) - retrying with output visible"
         rm -rf "${NGINX_WEBROOT%/}"/tmp-clone
-        sudo -u "${NGINX_USER}" \
+        sudo -H -u "${NGINX_USER}" \
                             git clone \
                                 --branch "${LARAVEL_GIT_BRANCH}" \
                                 --single-branch \
@@ -90,9 +90,9 @@ _laravel_run_artisan_cmds() {
         [ -z "${_cmd}" ] && continue
         case "${_cmd}" in \#*) continue ;; esac
         print_debug "Artisan: php "${NGINX_WEBROOT%/}"/artisan ${_cmd}"
-        if ! silent sudo -u "${NGINX_USER}" sh -c "php ${NGINX_WEBROOT}/artisan ${_cmd}"; then
+        if ! silent sudo -H -u "${NGINX_USER}" sh -c "php ${NGINX_WEBROOT}/artisan ${_cmd}"; then
             print_error "Artisan command failed: '${_cmd}' — retrying with output visible"
-            sudo -u "${NGINX_USER}" sh -c "php ${NGINX_WEBROOT}/artisan ${_cmd}"
+            sudo -H -u "${NGINX_USER}" sh -c "php ${NGINX_WEBROOT}/artisan ${_cmd}"
             exit 1
         fi
     done
@@ -115,13 +115,13 @@ _laravel_post_source_setup() {
         transform_var file LARAVEL_COMPOSER_AUTH
         if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then
             print_debug "Using provided Composer authentication"
-            silent sudo -u "${NGINX_USER}" \
+            silent sudo -H -u "${NGINX_USER}" \
                                     COMPOSER_AUTH="${LARAVEL_COMPOSER_AUTH}" \
                                     composer install \
                                         --no-interaction \
                                         --no-progress
         else
-            silent sudo -u "${NGINX_USER}" \
+            silent sudo -H -u "${NGINX_USER}" \
                                     composer install \
                                         --no-interaction \
                                         --no-progress
@@ -130,13 +130,13 @@ _laravel_post_source_setup() {
         if [ "${_exit_code}" -ne 0 ]; then
             print_error "Composer install failed (exit code ${_exit_code}) - retrying with output visible"
             if [ -n "${LARAVEL_COMPOSER_AUTH}" ]; then
-                sudo -u "${NGINX_USER}" \
+                sudo -H -u "${NGINX_USER}" \
                                     COMPOSER_AUTH="${LARAVEL_COMPOSER_AUTH}" \
                                     composer install \
                                         --no-interaction \
                                         --no-progress
             else
-                sudo -u "${NGINX_USER}" \
+                sudo -H -u "${NGINX_USER}" \
                                     composer install \
                                         --no-interaction \
                                         --no-progress
@@ -157,17 +157,17 @@ _laravel_post_source_setup() {
                 esac
                 if [ ! -f "${_db_path}" ]; then
                     print_info "Creating SQLite database at '${_db_path}'"
-                    sudo -u "${NGINX_USER}" touch "${_db_path}"
+                    sudo -H -u "${NGINX_USER}" touch "${_db_path}"
                 fi
             fi
         fi
 
         print_info "Running database migrations"
-        silent sudo -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan migrate --force
+        silent sudo -H -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan migrate --force
         local _migrate_code=$?
         if [ "${_migrate_code}" -ne 0 ]; then
             print_error "Database migration failed (exit code ${_migrate_code}) - retrying with output visible"
-            sudo -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan migrate --force
+            sudo -H -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan migrate --force
             exit 1
         fi
 
@@ -177,20 +177,20 @@ _laravel_post_source_setup() {
     if var_true "${LARAVEL_NPM_SETUP}" ; then
         print_info "Installing Node dependencies"
         cd "${NGINX_WEBROOT}"
-        silent sudo -u "${NGINX_USER}" npm install
+        silent sudo -H -u "${NGINX_USER}" npm install
         local _npm_code=$?
         if [ "${_npm_code}" -ne 0 ]; then
             print_error "npm install failed (exit code ${_npm_code}) - retrying with output visible"
-            sudo -u "${NGINX_USER}" npm install
+            sudo -H -u "${NGINX_USER}" npm install
             exit 1
         fi
 
         print_info "Building frontend assets"
-        silent sudo -u "${NGINX_USER}" npm run build
+        silent sudo -H -u "${NGINX_USER}" npm run build
         local _build_code=$?
         if [ "${_build_code}" -ne 0 ]; then
             print_error "npm run build failed (exit code ${_build_code}) - retrying with output visible"
-            sudo -u "${NGINX_USER}" npm run build
+            sudo -H -u "${NGINX_USER}" npm run build
             exit 1
         fi
     fi
@@ -374,7 +374,7 @@ laravel_configure_app_key() {
         else
             print_debug "[configure_app_key] No APP_KEY found - generating"
             laravel_env_update APP_KEY ""
-            silent sudo -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan key:generate
+            silent sudo -H -u "${NGINX_USER}" php "${NGINX_WEBROOT%/}"/artisan key:generate
         fi
     fi
 }
@@ -407,6 +407,12 @@ laravel_configure_db() {
                 if [ -n "${DB_SSL_MODE}" ]; then
                     laravel_env_update DB_SSLMODE "${DB_SSL_MODE}"
                 fi
+                for _pgssl_var in PGSSLCERT PGSSLKEY PGSSLROOTCERT PGSSLMODE; do
+                    if [ -n "${!_pgssl_var:-}" ]; then
+                        laravel_env_update "${_pgssl_var}" "${!_pgssl_var}"
+                    fi
+                done
+                unset _pgssl_var
             ;;
             sqlite* )
                 laravel_env_update DB_CONNECTION sqlite
@@ -563,7 +569,7 @@ laravel_configure_vite_hmr() {
             if [ -f "${NGINX_WEBROOT%/}"/vite.config.js ]; then
                 if ! grep -q "VITE_HMR_HOST" "${NGINX_WEBROOT%/}"/vite.config.js 2>/dev/null; then
                     print_info "Patching vite.config.js with HMR configuration"
-                    sudo -u "${NGINX_USER}" php -r '
+                    sudo -H -u "${NGINX_USER}" php -r '
                         $f = $argv[1];
                         $c = file_get_contents($f);
 
@@ -713,7 +719,7 @@ laravel_setup_webroot() {
             print_info "Installing Base Laravel Application"
             cd "${NGINX_WEBROOT}"
 
-            silent sudo -u "${NGINX_USER}" \
+            silent sudo -H -u "${NGINX_USER}" \
                                     composer create-project \
                                         laravel/laravel \
                                             "${NGINX_WEBROOT}" \
@@ -724,7 +730,7 @@ laravel_setup_webroot() {
 
             if [ -f "${NGINX_WEBROOT%/}"/package.json ]; then
                 print_info "Installing Node dependencies"
-                silent sudo -u "${NGINX_USER}" \
+                silent sudo -H -u "${NGINX_USER}" \
                                                  npm \
                                                     install
             fi
@@ -792,7 +798,7 @@ laravel_update_bashrc() {
 artisan() {
     export oldpwd="\$(pwd)"
     cd ${NGINX_WEBROOT}
-    sudo -u ${NGINX_USER} php "${NGINX_WEBROOT%/}"/artisan "\$@"
+    sudo -H -u ${NGINX_USER} php "${NGINX_WEBROOT%/}"/artisan "\$@"
     cd "\${oldpwd}"
 }
 EOF
@@ -846,7 +852,7 @@ laravel_volatile_setup() {
             fi
 
             if [ ! -e "${CONFIG_PATH%/}"/"${CONFIG_FILE}" ]; then
-                sudo -u "${NGINX_USER}" touch "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
+                sudo -H -u "${NGINX_USER}" touch "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
                 chmod 660 "${CONFIG_PATH%/}"/"${CONFIG_FILE}"
             fi
 
@@ -861,7 +867,7 @@ laravel_volatile_setup() {
             fi
 
             if [ ! -d "${NGINX_WEBROOT%/}"/storage ]; then
-                sudo -u "${NGINX_USER}" mkdir -p "${NGINX_WEBROOT%/}"/storage
+                sudo -H -u "${NGINX_USER}" mkdir -p "${NGINX_WEBROOT%/}"/storage
             fi
 
             rm -rf "${NGINX_WEBROOT%/}"/storage/logs

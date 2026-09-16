@@ -13,5 +13,5 @@ liftoff
 
 print_start "Starting worker"
 cd "${NGINX_WEBROOT}"
-sudo -u "${NGINX_USER}" php artisan \
+sudo -H -u "${NGINX_USER}" php artisan \
                                             queue:work

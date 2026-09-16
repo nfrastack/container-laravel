@@ -20,7 +20,7 @@ if [ -z "${_hmr_host}" ] && [ -f "${NGINX_WEBROOT%/}"/.env ]; then
 fi
 
 if [ -n "${_hmr_host}" ]; then
-    sudo -u "${NGINX_USER}" VITE_HMR_HOST="${_hmr_host}" npm run dev
+    sudo -H -u "${NGINX_USER}" VITE_HMR_HOST="${_hmr_host}" npm run dev
 else
-    sudo -u "${NGINX_USER}" npm run dev
+    sudo -H -u "${NGINX_USER}" npm run dev
 fi

@@ -13,7 +13,7 @@ liftoff
 
 print_start "Starting Artisan Serve"
 cd "${NGINX_WEBROOT}"
-sudo -u "${NGINX_USER}" php \
+sudo -H -u "${NGINX_USER}" php \
                             artisan \
                                     serve \
                                             --no-ansi \

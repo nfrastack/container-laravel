@@ -105,8 +105,8 @@ fi
 if [ "${SETUP_TYPE,,}" = "auto" ] ; then
     if [ -f "${NGINX_WEBROOT}"/artisan ] ; then
         print_debug "[cache_cleanup] Cleaning up Cache and Views"
-        silent sudo -u "${NGINX_USER}" php artisan cache:clear
-        silent sudo -u "${NGINX_USER}" php artisan view:clear
+        silent sudo -H -u "${NGINX_USER}" php artisan cache:clear
+        silent sudo -H -u "${NGINX_USER}" php artisan view:clear
     fi
 fi
 

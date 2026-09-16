@@ -1,3 +1,10 @@
+## 1.0.6 2026-09-16 <code at nfrastack dot com>
+
+   ### Changed
+      - Harden sudo commands to be constrained to users HOME
+      - Support .env writing for PGSSLCERT/PGSSLKEY/PGSSLROOTCERT/PGSSLMODE environment variables
+
+
 ## 1.0.5 2026-07-19 <code at nfrastack dot com>
 
    ### Changed

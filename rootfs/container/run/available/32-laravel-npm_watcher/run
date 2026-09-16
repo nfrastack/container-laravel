@@ -13,6 +13,6 @@ liftoff
 
 print_start "Starting NPM Watcher"
 cd "${NGINX_WEBROOT}"
-sudo -u "${NGINX_USER}" npm \
+sudo -H -u "${NGINX_USER}" npm \
                                 run \
                                     watch --log-level=verbose
