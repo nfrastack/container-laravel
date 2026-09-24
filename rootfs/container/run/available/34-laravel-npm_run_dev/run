@@ -20,7 +20,7 @@ if [ -z "${_hmr_host}" ] && [ -f "${NGINX_WEBROOT%/}"/.env ]; then
 fi
 
 if [ -n "${_hmr_host}" ]; then
-    sudo -H -u "${NGINX_USER}" VITE_HMR_HOST="${_hmr_host}" npm run dev
+    exec s6-setuidgid "${NGINX_USER}" env HOME="$(getent passwd "${NGINX_USER}" | cut -d: -f6)" VITE_HMR_HOST="${_hmr_host}" npm run dev
 else
-    sudo -H -u "${NGINX_USER}" npm run dev
+    exec s6-setuidgid "${NGINX_USER}" env HOME="$(getent passwd "${NGINX_USER}" | cut -d: -f6)" npm run dev
 fi

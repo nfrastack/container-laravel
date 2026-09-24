@@ -51,6 +51,9 @@ services:
       - ./dbbackup:/backup
     environment:
       - TIMEZONE=America/Vancouver
+      - CONTAINER_NAME=laravel-db-backup
+
+      - STATS_ENABLED=TRUE
 
       - DB01_HOST=laravel-db
       - DB01_TYPE=mariadb

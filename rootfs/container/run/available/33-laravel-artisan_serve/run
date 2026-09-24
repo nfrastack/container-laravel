@@ -13,7 +13,7 @@ liftoff
 
 print_start "Starting Artisan Serve"
 cd "${NGINX_WEBROOT}"
-sudo -H -u "${NGINX_USER}" php \
+exec s6-setuidgid "${NGINX_USER}" env HOME="$(getent passwd "${NGINX_USER}" | cut -d: -f6)" php \
                             artisan \
                                     serve \
                                             --no-ansi \

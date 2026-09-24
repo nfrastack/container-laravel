@@ -1,3 +1,9 @@
+## 1.0.7 2026-09-23 <code at nfrastack dot com>
+
+   ### Changed
+      - switch to s6-setuidgid for service execution
+
+
 ## 1.0.6 2026-09-16 <code at nfrastack dot com>
 
    ### Changed

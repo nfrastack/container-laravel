@@ -13,5 +13,5 @@ liftoff
 
 print_start "Starting worker"
 cd "${NGINX_WEBROOT}"
-sudo -H -u "${NGINX_USER}" php artisan \
+exec s6-setuidgid "${NGINX_USER}" env HOME="$(getent passwd "${NGINX_USER}" | cut -d: -f6)" php artisan \
                                             queue:work

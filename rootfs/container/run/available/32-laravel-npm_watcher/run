@@ -13,6 +13,6 @@ liftoff
 
 print_start "Starting NPM Watcher"
 cd "${NGINX_WEBROOT}"
-sudo -H -u "${NGINX_USER}" npm \
+exec s6-setuidgid "${NGINX_USER}" env HOME="$(getent passwd "${NGINX_USER}" | cut -d: -f6)" npm \
                                 run \
                                     watch --log-level=verbose
