@@ -1,3 +1,9 @@
+## 1.0.9 2026-10-21 <code at nfrastack dot com>
+
+   ### Added
+      - Pin to nfrastack/nginx-php-fpm:8.2.0
+
+
 ## 1.0.8 2026-10-21 <code at nfrastack dot com>
 
 All users should update immediately to resolve known security issues affecting earlier versions of this image.
